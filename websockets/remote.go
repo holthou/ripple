@@ -439,12 +439,12 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}, pee
 		switch {
 		case cmd.CommandError != nil:
 			return nil, cmd.CommandError
-		case cmd.Result.Marker != nil:
-			lines = append(lines, cmd.Result.Lines...)
-			marker = cmd.Result.Marker
-			if cmd.Result.LedgerSequence != nil {
-				ledgerIndex = *cmd.Result.LedgerSequence
-			}
+		//case cmd.Result.Marker != nil:
+		//	lines = append(lines, cmd.Result.Lines...)
+		//	marker = cmd.Result.Marker
+		//	if cmd.Result.LedgerSequence != nil {
+		//		ledgerIndex = *cmd.Result.LedgerSequence
+		//	}
 		default:
 			cmd.Result.Lines = append(lines, cmd.Result.Lines...)
 			cmd.Result.Lines.SortByCurrencyAmount()
