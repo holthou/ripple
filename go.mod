@@ -14,6 +14,7 @@ require (
 )
 
 require (
+	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e // indirect
 	github.com/juju/mgo/v2 v2.0.0-20210302023703-70d5d206e208 // indirect

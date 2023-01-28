@@ -20,13 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/golang/glog"
 	"reflect"
 	"runtime"
 	"strings"
 	"sync"
 	"unicode"
-
-	"github.com/ethereum/go-ethereum/log"
 )
 
 var (
@@ -198,7 +197,7 @@ func (c *callback) call(ctx context.Context, method string, args []reflect.Value
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]
-			log.Error("RPC method " + method + " crashed: " + fmt.Sprintf("%v\n%s", err, buf))
+			glog.Errorln("RPC method " + method + " crashed: " + fmt.Sprintf("%v\n%s", err, buf))
 			errRes = errors.New("method handler crashed")
 		}
 	}()

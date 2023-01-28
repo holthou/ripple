@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/golang/glog"
 	"os"
 
 	"github.com/rubblelabs/ripple/data"
@@ -37,6 +38,10 @@ func checkErr(err error) {
 }
 
 func main() {
+
+	err := fmt.Errorf("1212qw")
+	glog.Errorln("RPC client reconnect failed", "err", err)
+
 	if len(os.Args) == 1 {
 		showUsage()
 	}

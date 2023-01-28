@@ -18,23 +18,18 @@ package rpc
 
 import (
 	"context"
+	"github.com/golang/glog"
 	"net"
-
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/netutil"
 )
 
 // ServeListener accepts connections on l, serving JSON-RPC on them.
 func (s *Server) ServeListener(l net.Listener) error {
 	for {
 		conn, err := l.Accept()
-		if netutil.IsTemporaryError(err) {
-			log.Warn("RPC accept error", "err", err)
-			continue
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
-		log.Trace("Accepted RPC connection", "conn", conn.RemoteAddr())
+		glog.Warning("Accepted RPC connection", "conn", conn.RemoteAddr())
 		go s.ServeCodec(NewCodec(conn), 0)
 	}
 }

@@ -17,10 +17,9 @@
 package rpc
 
 import (
+	"github.com/golang/glog"
 	"net"
 	"strings"
-
-	"github.com/ethereum/go-ethereum/log"
 )
 
 // StartIPCEndpoint starts an IPC endpoint.
@@ -33,7 +32,7 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 	)
 	for _, api := range apis {
 		if err := handler.RegisterName(api.Namespace, api.Service); err != nil {
-			log.Info("IPC registration failed", "namespace", api.Namespace, "error", err)
+			glog.Errorln("IPC registration failed", "namespace", api.Namespace, "error", err)
 			return nil, nil, err
 		}
 		if _, ok := regMap[api.Namespace]; !ok {
@@ -41,7 +40,7 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 			regMap[api.Namespace] = struct{}{}
 		}
 	}
-	log.Debug("IPCs registered", "namespaces", strings.Join(registered, ","))
+	glog.Errorln("IPCs registered", "namespaces", strings.Join(registered, ","))
 	// All APIs registered, start the IPC listener.
 	listener, err := ipcListen(ipcEndpoint)
 	if err != nil {
