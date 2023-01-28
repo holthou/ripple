@@ -235,15 +235,15 @@ type AccountLinesCommand struct {
 	Peer        *data.Account       `json:"peer,omitempty"`
 	Limit       uint32              `json:"limit"`
 	LedgerIndex interface{}         `json:"ledger_index,omitempty"`
-	Marker      *data.Hash256       `json:"marker,omitempty"`
+	Marker      string              `json:"marker,omitempty"`
 	Result      *AccountLinesResult `json:"result,omitempty"`
 }
 
 type AccountLinesResult struct {
-	LedgerSequence *uint32      `json:"ledger_index"`
-	Account        data.Account `json:"account"`
-	//Marker         *data.Hash256         `json:"marker"`
-	Lines data.AccountLineSlice `json:"lines"`
+	LedgerSequence *uint32               `json:"ledger_index"`
+	Account        data.Account          `json:"account"`
+	Marker         string                `json:"marker"`
+	Lines          data.AccountLineSlice `json:"lines"`
 }
 
 type AccountOffersCommand struct {

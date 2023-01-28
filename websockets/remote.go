@@ -415,7 +415,7 @@ func (r *Remote) DepositAuthorized(source, dest data.Account, ledger interface{}
 func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}, peer string) (*AccountLinesResult, error) {
 	var (
 		lines  data.AccountLineSlice
-		marker *data.Hash256
+		marker string
 	)
 	for {
 		cmd := &AccountLinesCommand{
@@ -439,12 +439,12 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}, pee
 		switch {
 		case cmd.CommandError != nil:
 			return nil, cmd.CommandError
-		//case cmd.Result.Marker != nil:
-		//	lines = append(lines, cmd.Result.Lines...)
-		//	marker = cmd.Result.Marker
-		//	if cmd.Result.LedgerSequence != nil {
-		//		ledgerIndex = *cmd.Result.LedgerSequence
-		//	}
+		case cmd.Result.Marker != "":
+			lines = append(lines, cmd.Result.Lines...)
+			marker = cmd.Result.Marker
+			if cmd.Result.LedgerSequence != nil {
+				ledgerIndex = *cmd.Result.LedgerSequence
+			}
 		default:
 			cmd.Result.Lines = append(lines, cmd.Result.Lines...)
 			cmd.Result.Lines.SortByCurrencyAmount()
