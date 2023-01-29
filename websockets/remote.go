@@ -438,7 +438,19 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}, pee
 		<-cmd.Ready
 		switch {
 		case cmd.CommandError != nil:
-			return nil, cmd.CommandError
+			if cmd.CommandError.Code == 31 {
+				// 正常完整返回trust line后，marker返回为空，但 rwvALHcNYiXt4Gm6WuxGxssMZcndk4UB1K 成功后，marker不为空
+				// 继续处理返回31错误，忽略这种情况，可以认为是正确的
+				cmd.Result = &AccountLinesResult{
+					Account: cmd.Account,
+					Marker:  cmd.Marker,
+					Lines:   lines,
+				}
+				cmd.Result.Lines.SortByCurrencyAmount()
+				return cmd.Result, nil
+			} else {
+				return nil, cmd.CommandError
+			}
 		case cmd.Result.Marker != "":
 			lines = append(lines, cmd.Result.Lines...)
 			marker = cmd.Result.Marker
