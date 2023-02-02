@@ -10,11 +10,15 @@ type TxBase struct {
 	AccountTxnID       *Hash256        `json:",omitempty"`
 	SigningPubKey      *PublicKey      `json:",omitempty"`
 	TxnSignature       *VariableLength `json:",omitempty"`
-	Signers            []Signer        `json:",omitempty"`
+	Signers            []SignerInfo    `json:",omitempty"`
 	Memos              Memos           `json:",omitempty"`
 	PreviousTxnID      *Hash256        `json:",omitempty"`
 	LastLedgerSequence *uint32         `json:",omitempty"`
 	Hash               Hash256         `json:"hash"`
+}
+
+type SignerInfo struct {
+	Signer Signer `json:",omitempty"`
 }
 
 type Signer struct {
@@ -194,9 +198,9 @@ type TicketCreate struct {
 
 type SignerListSet struct {
 	TxBase
-	SignerQuorum   uint32        `json:",omitempty"`
-	SignerEntries  []SignerEntry `json:",omitempty"`
-	TicketSequence *uint32       `json:",omitempty"`
+	SignerQuorum   uint32            `json:",omitempty"`
+	SignerEntries  []SignerEntryInfo `json:",omitempty"`
+	TicketSequence *uint32           `json:",omitempty"`
 }
 
 type UNLModify struct {

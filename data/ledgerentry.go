@@ -133,6 +133,10 @@ type Escrow struct {
 	DestinationNode *NodeIndex       `json:",omitempty"`
 }
 
+type SignerEntryInfo struct {
+	SignerEntry SignerEntry
+}
+
 type SignerEntry struct {
 	Account       *Account `json:",omitempty"`
 	SignerWeight  *uint16  `json:",omitempty"`
