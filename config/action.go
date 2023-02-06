@@ -86,7 +86,11 @@ func (s ActionSlice) Submit(host string) error {
 		return err
 	}
 	var submit = func(seed data.Seed, fee data.Value, keyType data.KeyType, tx data.Transaction, txType data.TransactionType) error {
-		result, err := remote.Submit(tx)
+		_, raw, err := data.Raw(tx)
+		if err != nil {
+			return err
+		}
+		result, err := remote.Submit(raw)
 		if err != nil {
 			return err
 		}
