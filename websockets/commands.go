@@ -221,6 +221,7 @@ type AccountInfoCommand struct {
 	*Command
 	Account     data.Account       `json:"account"`
 	LedgerIndex interface{}        `json:"ledger_index,omitempty"`
+	SignerLists bool               `json:"signer_lists,omitempty"`
 	Result      *AccountInfoResult `json:"result,omitempty"`
 }
 

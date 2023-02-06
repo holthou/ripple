@@ -373,6 +373,7 @@ func (r *Remote) AccountInfo(a data.Account, ledger interface{}) (*AccountInfoRe
 		Command:     newCommand("account_info"),
 		Account:     a,
 		LedgerIndex: ledger,
+		SignerLists: true,
 	}
 	r.outgoing <- cmd
 	<-cmd.Ready

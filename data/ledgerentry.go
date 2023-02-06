@@ -17,6 +17,7 @@ type AccountRoot struct {
 	Account        *Account         `json:",omitempty"`
 	Sequence       *uint32          `json:",omitempty"`
 	Balance        *Value           `json:",omitempty"`
+	SignerLists    *[]SignerList    `json:"signer_lists,omitempty"`
 	OwnerCount     *uint32          `json:",omitempty"`
 	AccountTxnID   *Hash256         `json:",omitempty"`
 	RegularKey     *RegularKey      `json:",omitempty"`
@@ -134,7 +135,7 @@ type Escrow struct {
 }
 
 type SignerEntryInfo struct {
-	SignerEntry SignerEntry
+	SignerEntry SignerEntry `json:",omitempty"`
 }
 
 type SignerEntry struct {
@@ -145,11 +146,11 @@ type SignerEntry struct {
 
 type SignerList struct {
 	leBase
-	Flags         *LedgerEntryFlag `json:",omitempty"`
-	OwnerNode     *NodeIndex       `json:",omitempty"`
-	SignerQuorum  *uint32          `json:",omitempty"`
-	SignerEntries []SignerEntry    `json:",omitempty"`
-	SignerListID  *uint32          `json:",omitempty"`
+	Flags         *LedgerEntryFlag  `json:",omitempty"`
+	OwnerNode     *NodeIndex        `json:",omitempty"`
+	SignerQuorum  *uint32           `json:",omitempty"`
+	SignerEntries []SignerEntryInfo `json:",omitempty"`
+	SignerListID  *uint32           `json:",omitempty"`
 }
 
 type Ticket struct {
@@ -237,7 +238,7 @@ func (s *Escrow) Affects(account Account) bool {
 }
 func (s *SignerList) Affects(account Account) bool {
 	for _, entry := range s.SignerEntries {
-		if entry.Account != nil && entry.Account.Equals(account) {
+		if entry.SignerEntry.Account != nil && entry.SignerEntry.Account.Equals(account) {
 			return true
 		}
 	}
