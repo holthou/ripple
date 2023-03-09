@@ -171,18 +171,24 @@ func (r *Remote) Tx(hash data.Hash256) (*TxResult, error) {
 	return cmd.Result, nil
 }
 
-func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMetaData, pageSize int, minLedger, maxLedger int64) {
+type TransactionStream struct {
+	Data  *data.TransactionWithMetaData
+	Error error
+}
+
+func (r *Remote) accountTx(account data.Account, c chan TransactionStream, pageSize int, minLedger, maxLedger int64) {
 	defer close(c)
 	cmd := newAccountTxCommand(account, pageSize, nil, minLedger, maxLedger)
 	for ; ; cmd = newAccountTxCommand(account, pageSize, cmd.Result.Marker, minLedger, maxLedger) {
 		r.outgoing <- cmd
 		<-cmd.Ready
 		if cmd.CommandError != nil {
+			c <- TransactionStream{Error: fmt.Errorf("accountTx:%s", cmd.Error())}
 			glog.Errorln(cmd.Error())
 			return
 		}
 		for _, tx := range cmd.Result.Transactions {
-			c <- tx
+			c <- TransactionStream{Data: tx}
 		}
 		if cmd.Result.Marker == nil {
 			return
@@ -198,8 +204,8 @@ func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMet
 //
 // Use minLedger -1 for the earliest ledger available.
 // Use maxLedger -1 for the most recent validated ledger.
-func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLedger int64) chan *data.TransactionWithMetaData {
-	c := make(chan *data.TransactionWithMetaData)
+func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLedger int64) chan TransactionStream {
+	c := make(chan TransactionStream)
 	go r.accountTx(account, c, pageSize, minLedger, maxLedger)
 	return c
 }
