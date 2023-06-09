@@ -364,8 +364,8 @@ type ServerInfoResult struct {
 			Age            int     `json:"age"`
 			BaseFeeXrp     float64 `json:"base_fee_xrp"`
 			Hash           string  `json:"hash"`
-			ReserveBaseXrp int     `json:"reserve_base_xrp"`
-			ReserveIncXrp  int     `json:"reserve_inc_xrp"`
+			ReserveBaseXrp float64 `json:"reserve_base_xrp"`
+			ReserveIncXrp  float64 `json:"reserve_inc_xrp"`
 			Seq            int     `json:"seq"`
 		} `json:"validated_ledger"`
 		ValidationQuorum int `json:"validation_quorum"`
