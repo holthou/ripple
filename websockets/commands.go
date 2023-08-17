@@ -319,9 +319,9 @@ type ServerInfoResult struct {
 			ConvergeTimeS float64 `json:"converge_time_s"`
 			Proposers     int     `json:"proposers"`
 		} `json:"last_close"`
-		LoadFactor      int    `json:"load_factor"`
-		PubkeyNode      string `json:"pubkey_node"`
-		PublishedLedger string `json:"published_ledger"`
+		LoadFactor      float64 `json:"load_factor"`
+		PubkeyNode      string  `json:"pubkey_node"`
+		PublishedLedger string  `json:"published_ledger"`
 		Reporting       struct {
 			EtlSources []struct {
 				Connected              bool   `json:"connected"`
