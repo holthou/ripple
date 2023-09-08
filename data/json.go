@@ -39,6 +39,7 @@ func (l *Ledger) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	*l = Ledger(ledger.ledgerJSON)
+	l.Hash = ledger.LedgerHash
 	return nil
 }
 
