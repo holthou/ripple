@@ -74,24 +74,25 @@ type enc struct {
 }
 
 const (
-	ST_UINT16    uint8 = 1
-	ST_UINT32    uint8 = 2
-	ST_UINT64    uint8 = 3
-	ST_HASH128   uint8 = 4
-	ST_HASH256   uint8 = 5
-	ST_AMOUNT    uint8 = 6
-	ST_VL        uint8 = 7
-	ST_ACCOUNT   uint8 = 8
-	ST_OBJECT    uint8 = 14
-	ST_ARRAY     uint8 = 15
-	ST_UINT8     uint8 = 16
-	ST_HASH160   uint8 = 17
-	ST_PATHSET   uint8 = 18
-	ST_VECTOR256 uint8 = 19
-	ST_HASH96    uint8 = 20
-	ST_HASH192   uint8 = 21
-	ST_HASH384   uint8 = 22
-	ST_HASH512   uint8 = 23
+	ST_NOT_PRESENT uint8 = 0
+	ST_UINT16      uint8 = 1
+	ST_UINT32      uint8 = 2
+	ST_UINT64      uint8 = 3
+	ST_HASH128     uint8 = 4
+	ST_HASH256     uint8 = 5
+	ST_AMOUNT      uint8 = 6
+	ST_VL          uint8 = 7 //"Blob": 7,
+	ST_ACCOUNT     uint8 = 8
+	ST_OBJECT      uint8 = 14
+	ST_ARRAY       uint8 = 15
+	ST_UINT8       uint8 = 16
+	ST_HASH160     uint8 = 17
+	ST_PATHSET     uint8 = 18
+	ST_VECTOR256   uint8 = 19
+	ST_HASH96      uint8 = 20
+	ST_HASH192     uint8 = 21
+	ST_HASH384     uint8 = 22
+	ST_HASH512     uint8 = 23
 )
 
 // See rippled's SField.cpp for the strings and corresponding encoding values.
@@ -225,6 +226,7 @@ var encodings = map[enc]string{
 	{ST_VL, 19}: "UNLModifyValidator",
 	{ST_VL, 20}: "ValidatorToDisable",
 	{ST_VL, 21}: "ValidatorToReEnable",
+	{ST_VL, 22}: "Blob",
 	// account
 	{ST_ACCOUNT, 1}: "Account",
 	{ST_ACCOUNT, 2}: "Owner",

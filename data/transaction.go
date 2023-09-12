@@ -15,6 +15,8 @@ type TxBase struct {
 	PreviousTxnID      *Hash256        `json:",omitempty"`
 	LastLedgerSequence *uint32         `json:",omitempty"`
 	Hash               Hash256         `json:"hash"`
+	OperationLimit     *uint32         `json:",omitempty"`
+	NetworkID          *uint32         `json:",omitempty"`
 }
 
 type SignerInfo struct {
@@ -253,6 +255,11 @@ type NFTAcceptOffer struct {
 	NFTokenSellOffer *Hash256 `json:",omitempty"`
 	NFTokenBrokerFee *Amount  `json:",omitempty"`
 	TicketSequence   *uint32  `json:",omitempty"`
+}
+
+type ImportTransaction struct {
+	TxBase
+	Blob *VariableLength `json:",omitempty"`
 }
 
 func (t *TxBase) GetBase() *TxBase                    { return t }
