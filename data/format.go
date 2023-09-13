@@ -105,6 +105,7 @@ var encodings = map[enc]string{
 	// 16-bit unsigned integers (uncommon)
 	{ST_UINT16, 16}: "Version",
 	// 32-bit unsigned integers (common)
+	{ST_UINT32, 1}:  "NetworkID",
 	{ST_UINT32, 2}:  "Flags",
 	{ST_UINT32, 3}:  "SourceTag",
 	{ST_UINT32, 4}:  "Sequence",
@@ -148,6 +149,7 @@ var encodings = map[enc]string{
 	{ST_UINT32, 42}: "NFTokenTaxon",
 	{ST_UINT32, 43}: "MintedNFTokens",
 	{ST_UINT32, 44}: "BurnedNFTokens",
+
 	// 64-bit unsigned integers (common)
 	{ST_UINT64, 1}:  "IndexNext",
 	{ST_UINT64, 2}:  "IndexPrevious",
@@ -226,7 +228,8 @@ var encodings = map[enc]string{
 	{ST_VL, 19}: "UNLModifyValidator",
 	{ST_VL, 20}: "ValidatorToDisable",
 	{ST_VL, 21}: "ValidatorToReEnable",
-	{ST_VL, 22}: "Blob",
+
+	{ST_VL, 26}: "Blob",
 	// account
 	{ST_ACCOUNT, 1}: "Account",
 	{ST_ACCOUNT, 2}: "Owner",
