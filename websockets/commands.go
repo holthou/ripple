@@ -107,6 +107,25 @@ type TxResult struct {
 	Validated bool `json:"validated"`
 }
 
+type TxDataCommand struct {
+	*Command
+	Binary      bool          `json:"binary"`
+	Transaction data.Hash256  `json:"transaction"`
+	Result      *TxDataResult `json:"result,omitempty"`
+}
+
+type TxDataResult struct {
+	Ctid        string `json:"ctid"`
+	Date        uint32 `json:"date"`
+	Hash        string `json:"hash"`
+	InLedger    uint32 `json:"inLedger"`
+	LedgerIndex uint32 `json:"ledger_index"`
+	Meta        string `json:"meta"`
+	Status      string `json:"status"`
+	Tx          string `json:"tx"`
+	Validated   bool   `json:"validated"`
+}
+
 // A shim to populate the Validated field before passing
 // control on to TransactionWithMetaData.UnmarshalJSON
 func (txr *TxResult) UnmarshalJSON(b []byte) error {

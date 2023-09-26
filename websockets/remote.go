@@ -171,6 +171,21 @@ func (r *Remote) Tx(hash data.Hash256) (*TxResult, error) {
 	return cmd.Result, nil
 }
 
+// Synchronously get a single transaction
+func (r *Remote) TxData(hash data.Hash256) (*TxDataResult, error) {
+	cmd := &TxDataCommand{
+		Command:     newCommand("tx"),
+		Transaction: hash,
+		Binary:      true,
+	}
+	r.outgoing <- cmd
+	<-cmd.Ready
+	if cmd.CommandError != nil {
+		return nil, cmd.CommandError
+	}
+	return cmd.Result, nil
+}
+
 type TransactionStream struct {
 	Data  *data.TransactionWithMetaData
 	Error error
