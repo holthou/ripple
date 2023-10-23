@@ -339,6 +339,7 @@ type ServerInfoResult struct {
 			Proposers     int     `json:"proposers"`
 		} `json:"last_close"`
 		LoadFactor      float64 `json:"load_factor"`
+		NetworkId       int     `json:"network_id"`
 		PubkeyNode      string  `json:"pubkey_node"`
 		PublishedLedger string  `json:"published_ledger"`
 		Reporting       struct {
