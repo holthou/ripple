@@ -3,7 +3,6 @@ package crypto
 import (
 	"encoding/hex"
 	"fmt"
-
 	. "gopkg.in/check.v1"
 )
 
@@ -91,10 +90,10 @@ func (s *KeySuite) TestEd25119(c *C) {
 	key, err := NewEd25519Key(seed.Payload())
 	c.Check(err, IsNil)
 	c.Check(checkHash(NodePublicKey(key)), Equals, "nHUeeJCSY2dM71oxM8Cgjouf5ekTuev2mwDpc374aLMxzDLXNmjf")
-	// c.Check(checkHash(NodePrivateKey(key)), Equals, "pnen77YEeUd4fFKG7iycBWcwKpTaeFRkW2WFostaATy1DSupwXe") // Needs a new version encoding
+	//c.Check(checkHash(NodePrivateKey(key)), Equals, "paKv46LztLqK3GaKz1rG2nQGN6M4JLyRtxFBYFTw4wAVHtGys36") // Needs a new version encoding
 	c.Check(checkHash(AccountId(key, nil)), Equals, "rGWrZyQqhTp9Xu7G5Pkayo7bXjH4k4QYpf")
 	c.Check(checkHash(AccountPublicKey(key, nil)), Equals, "aKGheSBjmCsKJVuLNKRAKpZXT6wpk2FCuEZAXJupXgdAxX5THCqR")
-	// c.Check(checkHash(AccountPrivateKey(key, nil)), Equals, "p9JfM6HHi64m6mvB6v5k7G2b1cXzGmYiCNJf6GHPKvFTWdeRVjh") //Needs a new version encoding
+	//c.Check(checkHash(AccountPrivateKey(key, nil)), Equals, "pwDQjwEhbUBmPuEjFpEG75bFhv2obkCB7NxQsfFxM7xGHBMVPu9") //Needs a new version encoding
 
 	other, err := NewEd25519Key(nil)
 	c.Check(err, IsNil)
@@ -106,4 +105,25 @@ func (s *KeySuite) TestEd25119(c *C) {
 	c.Check(checkSignature(c, other.Private(nil), other.Public(nil), hash, msg), Equals, true)
 	c.Check(checkSignature(c, key.Private(nil), other.Public(nil), hash, msg), Equals, false)
 	c.Check(checkSignature(c, other.Private(nil), key.Public(nil), hash, msg), Equals, false)
+}
+
+func (s *KeySuite) TestRAddress(c *C) {
+	//验证公私钥参数是否匹配
+	tests := []struct {
+		name      string
+		secretKey string
+		publicKey string
+	}{
+		{"1", "paKv46LztLqK3GaKz1rG2nQGN6M4JLyRtxFBYFTw4wAVHtGys36", "nHUeeJCSY2dM71oxM8Cgjouf5ekTuev2mwDpc374aLMxzDLXNmjf"},
+		{"2", "paXGiB3651fdhVyXfZJ1vE8S8ic4N4Q21kU2xZbV7GdvryaJhHs", "nHUgshsTYZ55z1EwDAYfJ93xTWgs76eXwpDuunsP3YHKsRvAdsV2"},
+	}
+	for _, tt := range tests {
+		h, err := NewRippleHashCheck(tt.secretKey, RIPPLE_NODE_PRIVATE)
+		c.Check(err, IsNil)
+		//fmt.Println(hex.EncodeToString(h.Payload()))
+		key, err := NewEd25519KeyFromRaw(h.Payload())
+		c.Check(err, IsNil)
+		//fmt.Println(hex.EncodeToString(key.Private(nil)))
+		c.Check(checkHash(NodePublicKey(key)), Equals, tt.publicKey)
+	}
 }
