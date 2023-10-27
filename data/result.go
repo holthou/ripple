@@ -176,6 +176,7 @@ const (
 	tefTOO_BIG
 	tefNO_TICKET
 	tefNFTOKEN_IS_NOT_TRANSFERABLE
+	tefPAST_IMPORT_SEQ //XAH 应该是-178
 )
 const (
 	// -99 .. -1: R Retry (sequence too high, no funds for txn fee, originating account non-existent)
