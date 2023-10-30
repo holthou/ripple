@@ -124,6 +124,23 @@ func (s *KeySuite) TestRAddress(c *C) {
 		key, err := NewEd25519KeyFromRaw(h.Payload())
 		c.Check(err, IsNil)
 		//fmt.Println(hex.EncodeToString(key.Private(nil)))
+		fmt.Println(checkHash(AccountId(key, nil)))
+		//fmt.Println(Sha256RipeMD160(key.Public(nil)))
 		c.Check(checkHash(NodePublicKey(key)), Equals, tt.publicKey)
+
+		pk, err := NewRippleHashCheck(tt.publicKey, RIPPLE_NODE_PUBLIC)
+		c.Check(err, IsNil)
+		hash1, err := NewAccountId(Sha256RipeMD160(pk.Payload()))
+		c.Check(err, IsNil)
+		fmt.Println(hash1.String())
 	}
+
+	fmt.Println("")
+
+	pk, err := NewRippleHashCheck("nHUryiyDqEtyWVtFG24AAhaYjMf9FRLietbGzviF3piJsMm9qyDR", RIPPLE_NODE_PUBLIC)
+	c.Check(err, IsNil)
+	hash1, err := NewAccountId(Sha256RipeMD160(pk.Payload()))
+	c.Check(err, IsNil)
+	fmt.Println(hash1.String())
+
 }
