@@ -222,6 +222,30 @@ type NFTokenOffer struct {
 	Expiration       *uint32          `json:",omitempty"`
 }
 
+type HookDefinition struct {
+	leBase
+	//Flags *LedgerEntryFlag `json:",omitempty"`
+	//Owner            *Account         `json:",omitempty"`
+	//NFTokenID        *Hash256         `json:",omitempty"`
+	//Amount           *Amount          `json:",omitempty"`
+	//OwnerNode        *NodeIndex       `json:",omitempty"`
+	//NFTokenOfferNode *NodeIndex       `json:",omitempty"`
+	//Destination      *Account         `json:",omitempty"`
+	//Expiration       *uint32          `json:",omitempty"`
+}
+
+type Hook struct {
+	leBase
+	//Flags *LedgerEntryFlag `json:",omitempty"`
+	//Owner            *Account         `json:",omitempty"`
+	//NFTokenID        *Hash256         `json:",omitempty"`
+	//Amount           *Amount          `json:",omitempty"`
+	//OwnerNode        *NodeIndex       `json:",omitempty"`
+	//NFTokenOfferNode *NodeIndex       `json:",omitempty"`
+	//Destination      *Account         `json:",omitempty"`
+	//Expiration       *uint32          `json:",omitempty"`
+}
+
 func (a *AccountRoot) Affects(account Account) bool {
 	return a.Account != nil && a.Account.Equals(account)
 }
@@ -263,6 +287,14 @@ func (tp *NFTokenPage) Affects(account Account) bool {
 
 func (to *NFTokenOffer) Affects(account Account) bool {
 	return (to.Owner != nil && to.Owner.Equals(account)) || (to.Destination != nil && to.Destination.Equals(account))
+}
+
+func (to *HookDefinition) Affects(account Account) bool {
+	return false
+}
+
+func (h *Hook) Affects(account Account) bool {
+	return false
 }
 
 func (le *leBase) GetType() string                     { return ledgerEntryNames[le.LedgerEntryType] }

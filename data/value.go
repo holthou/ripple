@@ -102,6 +102,10 @@ var valueRegex = regexp.MustCompile("([+-]?)(\\d*)(\\.(\\d*))?([eE]([+-]?)(\\d+)
 // should be stored as native. If the native flag is set AND a decimal is used, the
 // number is interpreted as XRP. If no decimal is used, it is interpreted as drips.
 func NewValue(s string, native bool) (*Value, error) {
+	//TODO 解决异常，临时方案
+	if s == "unavailable" {
+		return &Value{}, nil
+	}
 	var err error
 	v := Value{
 		native: native,

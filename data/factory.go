@@ -103,6 +103,8 @@ var LedgerEntryFactory = [...]func() LedgerEntry{
 	NEGATIVE_UNL:     func() LedgerEntry { return &NegativeUNL{leBase: leBase{LedgerEntryType: NEGATIVE_UNL}} },
 	NFTOKEN_PAGE:     func() LedgerEntry { return &NFTokenPage{leBase: leBase{LedgerEntryType: NFTOKEN_PAGE}} },
 	NFTOKEN_OFFER:    func() LedgerEntry { return &NFTokenOffer{leBase: leBase{LedgerEntryType: NFTOKEN_OFFER}} },
+	HOOKDEFINITION:   func() LedgerEntry { return &HookDefinition{leBase: leBase{LedgerEntryType: HOOKDEFINITION}} },
+	HOOK:             func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: HOOK}} },
 }
 
 var TxFactory = [...]func() Transaction{
