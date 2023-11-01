@@ -121,7 +121,7 @@ func main() {
 		checkErr(err)
 		fmt.Println("Getting transactions for: ", account.String())
 		for txm := range r.AccountTx(*account, *pageSize, -1, -1) {
-			explain(txm, terminal.ShowLedgerSequence)
+			explain(txm.Data, terminal.ShowLedgerSequence)
 		}
 	case len(matches[4]) > 0:
 		r := bufio.NewReader(os.Stdin)

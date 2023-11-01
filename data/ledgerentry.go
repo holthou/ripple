@@ -32,6 +32,7 @@ type AccountRoot struct {
 	NFTokenMinter  *Account         `json:",omitempty"`
 	MintedNFTokens *uint32          `json:",omitempty"`
 	BurnedNFTokens *uint32          `json:",omitempty"`
+	ImportSequence *uint32          `json:",omitempty"` //XAH mint出burn交易的seq
 }
 
 type RippleState struct {
