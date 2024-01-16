@@ -136,6 +136,7 @@ var TxFactory = [...]func() Transaction{
 	NFTOKEN_CANCEL_OFFER: func() Transaction { return &NFTCancelOffer{TxBase: TxBase{TransactionType: NFTOKEN_CANCEL_OFFER}} },
 	NFTOKEN_ACCEPT_OFFER: func() Transaction { return &NFTAcceptOffer{TxBase: TxBase{TransactionType: NFTOKEN_ACCEPT_OFFER}} },
 	IMPORT:               func() Transaction { return &ImportTransaction{TxBase: TxBase{TransactionType: IMPORT}} },
+	INVOKE:               func() Transaction { return &InvokeTransaction{TxBase: TxBase{TransactionType: INVOKE}} },
 }
 
 var ledgerEntryNames = [...]string{

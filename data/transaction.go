@@ -262,6 +262,13 @@ type ImportTransaction struct {
 	Blob *VariableLength `json:",omitempty"`
 }
 
+type InvokeTransaction struct {
+	TxBase
+	Destination Account
+	Blob        *VariableLength `json:",omitempty"`
+	InvoiceID   *Hash256        `json:",omitempty"`
+}
+
 func (t *TxBase) GetBase() *TxBase                    { return t }
 func (t *TxBase) GetType() string                     { return txNames[t.TransactionType] }
 func (t *TxBase) GetTransactionType() TransactionType { return t.TransactionType }
