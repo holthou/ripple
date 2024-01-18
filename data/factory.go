@@ -105,6 +105,8 @@ var LedgerEntryFactory = [...]func() LedgerEntry{
 	NFTOKEN_OFFER:    func() LedgerEntry { return &NFTokenOffer{leBase: leBase{LedgerEntryType: NFTOKEN_OFFER}} },
 	HOOKDEFINITION:   func() LedgerEntry { return &HookDefinition{leBase: leBase{LedgerEntryType: HOOKDEFINITION}} },
 	HOOK:             func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: HOOK}} },
+	HOOKSTATE:        func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: HOOKSTATE}} },
+	EMITTEDTXN:       func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: EMITTEDTXN}} },
 }
 
 var TxFactory = [...]func() Transaction{
