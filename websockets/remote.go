@@ -149,6 +149,7 @@ func (r *Remote) run() {
 			}
 			delete(pending, response.Id)
 			if err := json.Unmarshal(in, &cmd); err != nil {
+				//glog.Errorln(string(in))
 				glog.Errorln(err.Error())
 				continue
 			}
@@ -171,18 +172,39 @@ func (r *Remote) Tx(hash data.Hash256) (*TxResult, error) {
 	return cmd.Result, nil
 }
 
-func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMetaData, pageSize int, minLedger, maxLedger int64) {
+// Synchronously get a single transaction
+func (r *Remote) TxData(hash data.Hash256) (*TxDataResult, error) {
+	cmd := &TxDataCommand{
+		Command:     newCommand("tx"),
+		Transaction: hash,
+		Binary:      true,
+	}
+	r.outgoing <- cmd
+	<-cmd.Ready
+	if cmd.CommandError != nil {
+		return nil, cmd.CommandError
+	}
+	return cmd.Result, nil
+}
+
+type TransactionStream struct {
+	Data  *data.TransactionWithMetaData
+	Error error
+}
+
+func (r *Remote) accountTx(account data.Account, c chan TransactionStream, pageSize int, minLedger, maxLedger int64) {
 	defer close(c)
 	cmd := newAccountTxCommand(account, pageSize, nil, minLedger, maxLedger)
 	for ; ; cmd = newAccountTxCommand(account, pageSize, cmd.Result.Marker, minLedger, maxLedger) {
 		r.outgoing <- cmd
 		<-cmd.Ready
 		if cmd.CommandError != nil {
+			c <- TransactionStream{Error: fmt.Errorf("accountTx:%s", cmd.Error())}
 			glog.Errorln(cmd.Error())
 			return
 		}
 		for _, tx := range cmd.Result.Transactions {
-			c <- tx
+			c <- TransactionStream{Data: tx}
 		}
 		if cmd.Result.Marker == nil {
 			return
@@ -198,21 +220,21 @@ func (r *Remote) accountTx(account data.Account, c chan *data.TransactionWithMet
 //
 // Use minLedger -1 for the earliest ledger available.
 // Use maxLedger -1 for the most recent validated ledger.
-func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLedger int64) chan *data.TransactionWithMetaData {
-	c := make(chan *data.TransactionWithMetaData)
+func (r *Remote) AccountTx(account data.Account, pageSize int, minLedger, maxLedger int64) chan TransactionStream {
+	c := make(chan TransactionStream)
 	go r.accountTx(account, c, pageSize, minLedger, maxLedger)
 	return c
 }
 
 // Synchronously submit a single transaction
-func (r *Remote) Submit(tx data.Transaction) (*SubmitResult, error) {
-	_, raw, err := data.Raw(tx)
-	if err != nil {
-		return nil, err
-	}
+func (r *Remote) Submit(rawtx []byte) (*SubmitResult, error) {
+	//_, raw, err := data.Raw(tx)
+	//if err != nil {
+	//	return nil, err
+	//}
 	cmd := &SubmitCommand{
 		Command: newCommand("submit"),
-		TxBlob:  fmt.Sprintf("%X", raw),
+		TxBlob:  fmt.Sprintf("%X", rawtx),
 	}
 	r.outgoing <- cmd
 	<-cmd.Ready
@@ -373,6 +395,7 @@ func (r *Remote) AccountInfo(a data.Account, ledger interface{}) (*AccountInfoRe
 		Command:     newCommand("account_info"),
 		Account:     a,
 		LedgerIndex: ledger,
+		SignerLists: true,
 	}
 	r.outgoing <- cmd
 	<-cmd.Ready
@@ -438,7 +461,19 @@ func (r *Remote) AccountLines(account data.Account, ledgerIndex interface{}, pee
 		<-cmd.Ready
 		switch {
 		case cmd.CommandError != nil:
-			return nil, cmd.CommandError
+			if cmd.CommandError.Code == 31 {
+				// 正常完整返回trust line后，marker返回为空，但 rwvALHcNYiXt4Gm6WuxGxssMZcndk4UB1K 成功后，marker不为空
+				// 继续处理返回31错误，忽略这种情况，可以认为是正确的
+				cmd.Result = &AccountLinesResult{
+					Account: cmd.Account,
+					Marker:  cmd.Marker,
+					Lines:   lines,
+				}
+				cmd.Result.Lines.SortByCurrencyAmount()
+				return cmd.Result, nil
+			} else {
+				return nil, cmd.CommandError
+			}
 		case cmd.Result.Marker != "":
 			lines = append(lines, cmd.Result.Lines...)
 			marker = cmd.Result.Marker

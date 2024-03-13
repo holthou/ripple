@@ -17,6 +17,7 @@ type AccountRoot struct {
 	Account        *Account         `json:",omitempty"`
 	Sequence       *uint32          `json:",omitempty"`
 	Balance        *Value           `json:",omitempty"`
+	SignerLists    *[]SignerList    `json:"signer_lists,omitempty"`
 	OwnerCount     *uint32          `json:",omitempty"`
 	AccountTxnID   *Hash256         `json:",omitempty"`
 	RegularKey     *RegularKey      `json:",omitempty"`
@@ -31,6 +32,7 @@ type AccountRoot struct {
 	NFTokenMinter  *Account         `json:",omitempty"`
 	MintedNFTokens *uint32          `json:",omitempty"`
 	BurnedNFTokens *uint32          `json:",omitempty"`
+	ImportSequence *uint32          `json:",omitempty"` //XAH mint出burn交易的seq
 }
 
 type RippleState struct {
@@ -133,6 +135,10 @@ type Escrow struct {
 	DestinationNode *NodeIndex       `json:",omitempty"`
 }
 
+type SignerEntryInfo struct {
+	SignerEntry SignerEntry `json:",omitempty"`
+}
+
 type SignerEntry struct {
 	Account       *Account `json:",omitempty"`
 	SignerWeight  *uint16  `json:",omitempty"`
@@ -141,11 +147,11 @@ type SignerEntry struct {
 
 type SignerList struct {
 	leBase
-	Flags         *LedgerEntryFlag `json:",omitempty"`
-	OwnerNode     *NodeIndex       `json:",omitempty"`
-	SignerQuorum  *uint32          `json:",omitempty"`
-	SignerEntries []SignerEntry    `json:",omitempty"`
-	SignerListID  *uint32          `json:",omitempty"`
+	Flags         *LedgerEntryFlag  `json:",omitempty"`
+	OwnerNode     *NodeIndex        `json:",omitempty"`
+	SignerQuorum  *uint32           `json:",omitempty"`
+	SignerEntries []SignerEntryInfo `json:",omitempty"`
+	SignerListID  *uint32           `json:",omitempty"`
 }
 
 type Ticket struct {
@@ -216,6 +222,30 @@ type NFTokenOffer struct {
 	Expiration       *uint32          `json:",omitempty"`
 }
 
+type HookDefinition struct {
+	leBase
+	//Flags *LedgerEntryFlag `json:",omitempty"`
+	//Owner            *Account         `json:",omitempty"`
+	//NFTokenID        *Hash256         `json:",omitempty"`
+	//Amount           *Amount          `json:",omitempty"`
+	//OwnerNode        *NodeIndex       `json:",omitempty"`
+	//NFTokenOfferNode *NodeIndex       `json:",omitempty"`
+	//Destination      *Account         `json:",omitempty"`
+	//Expiration       *uint32          `json:",omitempty"`
+}
+
+type Hook struct {
+	leBase
+	//Flags *LedgerEntryFlag `json:",omitempty"`
+	//Owner            *Account         `json:",omitempty"`
+	//NFTokenID        *Hash256         `json:",omitempty"`
+	//Amount           *Amount          `json:",omitempty"`
+	//OwnerNode        *NodeIndex       `json:",omitempty"`
+	//NFTokenOfferNode *NodeIndex       `json:",omitempty"`
+	//Destination      *Account         `json:",omitempty"`
+	//Expiration       *uint32          `json:",omitempty"`
+}
+
 func (a *AccountRoot) Affects(account Account) bool {
 	return a.Account != nil && a.Account.Equals(account)
 }
@@ -233,7 +263,7 @@ func (s *Escrow) Affects(account Account) bool {
 }
 func (s *SignerList) Affects(account Account) bool {
 	for _, entry := range s.SignerEntries {
-		if entry.Account != nil && entry.Account.Equals(account) {
+		if entry.SignerEntry.Account != nil && entry.SignerEntry.Account.Equals(account) {
 			return true
 		}
 	}
@@ -257,6 +287,14 @@ func (tp *NFTokenPage) Affects(account Account) bool {
 
 func (to *NFTokenOffer) Affects(account Account) bool {
 	return (to.Owner != nil && to.Owner.Equals(account)) || (to.Destination != nil && to.Destination.Equals(account))
+}
+
+func (to *HookDefinition) Affects(account Account) bool {
+	return false
+}
+
+func (h *Hook) Affects(account Account) bool {
+	return false
 }
 
 func (le *leBase) GetType() string                     { return ledgerEntryNames[le.LedgerEntryType] }

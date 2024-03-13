@@ -10,11 +10,17 @@ type TxBase struct {
 	AccountTxnID       *Hash256        `json:",omitempty"`
 	SigningPubKey      *PublicKey      `json:",omitempty"`
 	TxnSignature       *VariableLength `json:",omitempty"`
-	Signers            []Signer        `json:",omitempty"`
+	Signers            []SignerInfo    `json:",omitempty"`
 	Memos              Memos           `json:",omitempty"`
 	PreviousTxnID      *Hash256        `json:",omitempty"`
 	LastLedgerSequence *uint32         `json:",omitempty"`
 	Hash               Hash256         `json:"hash"`
+	OperationLimit     *uint32         `json:",omitempty"`
+	NetworkID          *uint32         `json:",omitempty"`
+}
+
+type SignerInfo struct {
+	Signer Signer `json:",omitempty"`
 }
 
 type Signer struct {
@@ -194,9 +200,9 @@ type TicketCreate struct {
 
 type SignerListSet struct {
 	TxBase
-	SignerQuorum   uint32        `json:",omitempty"`
-	SignerEntries  []SignerEntry `json:",omitempty"`
-	TicketSequence *uint32       `json:",omitempty"`
+	SignerQuorum   uint32            `json:",omitempty"`
+	SignerEntries  []SignerEntryInfo `json:",omitempty"`
+	TicketSequence *uint32           `json:",omitempty"`
 }
 
 type UNLModify struct {
@@ -249,6 +255,18 @@ type NFTAcceptOffer struct {
 	NFTokenSellOffer *Hash256 `json:",omitempty"`
 	NFTokenBrokerFee *Amount  `json:",omitempty"`
 	TicketSequence   *uint32  `json:",omitempty"`
+}
+
+type ImportTransaction struct {
+	TxBase
+	Blob *VariableLength `json:",omitempty"`
+}
+
+type InvokeTransaction struct {
+	TxBase
+	Destination Account
+	Blob        *VariableLength `json:",omitempty"`
+	InvoiceID   *Hash256        `json:",omitempty"`
 }
 
 func (t *TxBase) GetBase() *TxBase                    { return t }

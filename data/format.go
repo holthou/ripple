@@ -14,14 +14,15 @@ type LedgerNamespace uint16
 
 const (
 	// Hash Prefixes
-	HP_TRANSACTION_ID   HashPrefix = 0x54584E00 // 'TXN' transaction
-	HP_TRANSACTION_NODE HashPrefix = 0x534E4400 // 'SND' transaction plus metadata (probably should have been TND!)
-	HP_LEAF_NODE        HashPrefix = 0x4D4C4E00 // 'MLN' account state
-	HP_INNER_NODE       HashPrefix = 0x4D494E00 // 'MIN' inner node in tree
-	HP_LEDGER_MASTER    HashPrefix = 0x4C575200 // 'LWR' ledger master data for signing (probably should have been LGR!)
-	HP_TRANSACTION_SIGN HashPrefix = 0x53545800 // 'STX' inner transaction to sign
-	HP_VALIDATION       HashPrefix = 0x56414C00 // 'VAL' validation for signing
-	HP_PROPOSAL         HashPrefix = 0x50525000 // 'PRP' proposal for signing
+	HP_TRANSACTION_ID       HashPrefix = 0x54584E00 // 'TXN' transaction
+	HP_TRANSACTION_NODE     HashPrefix = 0x534E4400 // 'SND' transaction plus metadata (probably should have been TND!)
+	HP_LEAF_NODE            HashPrefix = 0x4D4C4E00 // 'MLN' account state
+	HP_INNER_NODE           HashPrefix = 0x4D494E00 // 'MIN' inner node in tree
+	HP_LEDGER_MASTER        HashPrefix = 0x4C575200 // 'LWR' ledger master data for signing (probably should have been LGR!)
+	HP_TRANSACTION_SIGN     HashPrefix = 0x53545800 // 'STX' inner transaction to sign
+	HP_VALIDATION           HashPrefix = 0x56414C00 // 'VAL' validation for signing
+	HP_PROPOSAL             HashPrefix = 0x50525000 // 'PRP' proposal for signing
+	HP_TRANSACTION_MultiSig HashPrefix = 0x534d5400 // 'STX' inner transaction to sign
 
 	// Node Types
 	NT_UNKNOWN          NodeType = 0
@@ -73,24 +74,25 @@ type enc struct {
 }
 
 const (
-	ST_UINT16    uint8 = 1
-	ST_UINT32    uint8 = 2
-	ST_UINT64    uint8 = 3
-	ST_HASH128   uint8 = 4
-	ST_HASH256   uint8 = 5
-	ST_AMOUNT    uint8 = 6
-	ST_VL        uint8 = 7
-	ST_ACCOUNT   uint8 = 8
-	ST_OBJECT    uint8 = 14
-	ST_ARRAY     uint8 = 15
-	ST_UINT8     uint8 = 16
-	ST_HASH160   uint8 = 17
-	ST_PATHSET   uint8 = 18
-	ST_VECTOR256 uint8 = 19
-	ST_HASH96    uint8 = 20
-	ST_HASH192   uint8 = 21
-	ST_HASH384   uint8 = 22
-	ST_HASH512   uint8 = 23
+	ST_NOT_PRESENT uint8 = 0
+	ST_UINT16      uint8 = 1
+	ST_UINT32      uint8 = 2
+	ST_UINT64      uint8 = 3
+	ST_HASH128     uint8 = 4
+	ST_HASH256     uint8 = 5
+	ST_AMOUNT      uint8 = 6
+	ST_VL          uint8 = 7 //"Blob": 7,
+	ST_ACCOUNT     uint8 = 8
+	ST_OBJECT      uint8 = 14
+	ST_ARRAY       uint8 = 15
+	ST_UINT8       uint8 = 16
+	ST_HASH160     uint8 = 17
+	ST_PATHSET     uint8 = 18
+	ST_VECTOR256   uint8 = 19
+	ST_HASH96      uint8 = 20
+	ST_HASH192     uint8 = 21
+	ST_HASH384     uint8 = 22
+	ST_HASH512     uint8 = 23
 )
 
 // See rippled's SField.cpp for the strings and corresponding encoding values.
@@ -103,6 +105,7 @@ var encodings = map[enc]string{
 	// 16-bit unsigned integers (uncommon)
 	{ST_UINT16, 16}: "Version",
 	// 32-bit unsigned integers (common)
+	{ST_UINT32, 1}:  "NetworkID",
 	{ST_UINT32, 2}:  "Flags",
 	{ST_UINT32, 3}:  "SourceTag",
 	{ST_UINT32, 4}:  "Sequence",
@@ -146,6 +149,7 @@ var encodings = map[enc]string{
 	{ST_UINT32, 42}: "NFTokenTaxon",
 	{ST_UINT32, 43}: "MintedNFTokens",
 	{ST_UINT32, 44}: "BurnedNFTokens",
+
 	// 64-bit unsigned integers (common)
 	{ST_UINT64, 1}:  "IndexNext",
 	{ST_UINT64, 2}:  "IndexPrevious",
@@ -224,6 +228,8 @@ var encodings = map[enc]string{
 	{ST_VL, 19}: "UNLModifyValidator",
 	{ST_VL, 20}: "ValidatorToDisable",
 	{ST_VL, 21}: "ValidatorToReEnable",
+
+	{ST_VL, 26}: "Blob",
 	// account
 	{ST_ACCOUNT, 1}: "Account",
 	{ST_ACCOUNT, 2}: "Owner",

@@ -24,36 +24,62 @@ const (
 	NEGATIVE_UNL     LedgerEntryType = 0x4e // 'N'
 	NFTOKEN_PAGE     LedgerEntryType = 0x50 // 'P'
 	NFTOKEN_OFFER    LedgerEntryType = 0x37 // '7'
+	ANY              LedgerEntryType = 0x00
+	CONTRACT         LedgerEntryType = 0x63
+	EMITTEDTXN       LedgerEntryType = 0x45
+	GENERATORMAP     LedgerEntryType = 0x67
+	HOOK             LedgerEntryType = 0x48
+	HOOKDEFINITION   LedgerEntryType = 0x44
+	HOOKSTATE        LedgerEntryType = 0x76
+	IMPORTVLSEQ      LedgerEntryType = 0x49
+	NICKNAME         LedgerEntryType = 0x6E
+	UNLREPORT        LedgerEntryType = 0x52
+	URITOKEN         LedgerEntryType = 0x55
 
 	// TransactionType values come from rippled's "TxFormats.h"
-	PAYMENT              TransactionType = 0
-	ESCROW_CREATE        TransactionType = 1
-	ESCROW_FINISH        TransactionType = 2
-	ACCOUNT_SET          TransactionType = 3
-	ESCROW_CANCEL        TransactionType = 4
-	SET_REGULAR_KEY      TransactionType = 5
-	OFFER_CREATE         TransactionType = 7
-	OFFER_CANCEL         TransactionType = 8
-	TICKET_CREATE        TransactionType = 10
-	SIGNER_LIST_SET      TransactionType = 12
-	PAYCHAN_CREATE       TransactionType = 13
-	PAYCHAN_FUND         TransactionType = 14
-	PAYCHAN_CLAIM        TransactionType = 15
-	CHECK_CREATE         TransactionType = 16
-	CHECK_CASH           TransactionType = 17
-	CHECK_CANCEL         TransactionType = 18
-	SET_DEPOSIT_PREAUTH  TransactionType = 19
-	TRUST_SET            TransactionType = 20
-	ACCOUNT_DELETE       TransactionType = 21
-	NFTOKEN_MINT         TransactionType = 25
-	NFTOKEN_BURN         TransactionType = 26
-	NFTOKEN_CREATE_OFFER TransactionType = 27
-	NFTOKEN_CANCEL_OFFER TransactionType = 28
-	NFTOKEN_ACCEPT_OFFER TransactionType = 29
+	PAYMENT         TransactionType = 0
+	ESCROW_CREATE   TransactionType = 1
+	ESCROW_FINISH   TransactionType = 2
+	ACCOUNT_SET     TransactionType = 3
+	ESCROW_CANCEL   TransactionType = 4
+	SET_REGULAR_KEY TransactionType = 5
+	NICK_NAME_SET   TransactionType = 6
+	OFFER_CREATE    TransactionType = 7
+	OFFER_CANCEL    TransactionType = 8
+	CONTRACTTX      TransactionType = 9
+	TICKET_CREATE   TransactionType = 10
+	SPINAL_TAP      TransactionType = 11
+	SIGNER_LIST_SET TransactionType = 12
 
-	AMENDMENT  TransactionType = 100
-	SET_FEE    TransactionType = 101
-	UNL_MODIFY TransactionType = 102
+	PAYCHAN_CREATE              TransactionType = 13
+	PAYCHAN_FUND                TransactionType = 14
+	PAYCHAN_CLAIM               TransactionType = 15
+	CHECK_CREATE                TransactionType = 16
+	CHECK_CASH                  TransactionType = 17
+	CHECK_CANCEL                TransactionType = 18
+	SET_DEPOSIT_PREAUTH         TransactionType = 19
+	TRUST_SET                   TransactionType = 20
+	ACCOUNT_DELETE              TransactionType = 21
+	SET_HOOK                    TransactionType = 22
+	NFTOKEN_MINT                TransactionType = 25
+	NFTOKEN_BURN                TransactionType = 26
+	NFTOKEN_CREATE_OFFER        TransactionType = 27
+	NFTOKEN_CANCEL_OFFER        TransactionType = 28
+	NFTOKEN_ACCEPT_OFFER        TransactionType = 29
+	URI_TOKEN_MINT              TransactionType = 45
+	URI_TOKEN_BURN              TransactionType = 46
+	URI_TOKEN_BUY               TransactionType = 47
+	URI_TOKEN_CREATE_SELL_OFFER TransactionType = 48
+	URI_TOKEN_CANCEL_SELL_OFFER TransactionType = 49
+	GENESIS_MINT                TransactionType = 96
+	IMPORT                      TransactionType = 97
+	CLAIM_REWARD                TransactionType = 98
+	INVOKE                      TransactionType = 99
+	AMENDMENT                   TransactionType = 100
+	SET_FEE                     TransactionType = 101
+	UNL_MODIFY                  TransactionType = 102
+	EMIT_FAILURE                TransactionType = 103
+	UNL_REPORT                  TransactionType = 104
 )
 
 var LedgerFactory = [...]func() Hashable{
@@ -77,6 +103,10 @@ var LedgerEntryFactory = [...]func() LedgerEntry{
 	NEGATIVE_UNL:     func() LedgerEntry { return &NegativeUNL{leBase: leBase{LedgerEntryType: NEGATIVE_UNL}} },
 	NFTOKEN_PAGE:     func() LedgerEntry { return &NFTokenPage{leBase: leBase{LedgerEntryType: NFTOKEN_PAGE}} },
 	NFTOKEN_OFFER:    func() LedgerEntry { return &NFTokenOffer{leBase: leBase{LedgerEntryType: NFTOKEN_OFFER}} },
+	HOOKDEFINITION:   func() LedgerEntry { return &HookDefinition{leBase: leBase{LedgerEntryType: HOOKDEFINITION}} },
+	HOOK:             func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: HOOK}} },
+	HOOKSTATE:        func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: HOOKSTATE}} },
+	EMITTEDTXN:       func() LedgerEntry { return &Hook{leBase: leBase{LedgerEntryType: EMITTEDTXN}} },
 }
 
 var TxFactory = [...]func() Transaction{
@@ -107,6 +137,8 @@ var TxFactory = [...]func() Transaction{
 	NFTOKEN_CREATE_OFFER: func() Transaction { return &NFTokenCreateOffer{TxBase: TxBase{TransactionType: NFTOKEN_CREATE_OFFER}} },
 	NFTOKEN_CANCEL_OFFER: func() Transaction { return &NFTCancelOffer{TxBase: TxBase{TransactionType: NFTOKEN_CANCEL_OFFER}} },
 	NFTOKEN_ACCEPT_OFFER: func() Transaction { return &NFTAcceptOffer{TxBase: TxBase{TransactionType: NFTOKEN_ACCEPT_OFFER}} },
+	IMPORT:               func() Transaction { return &ImportTransaction{TxBase: TxBase{TransactionType: IMPORT}} },
+	INVOKE:               func() Transaction { return &InvokeTransaction{TxBase: TxBase{TransactionType: INVOKE}} },
 }
 
 var ledgerEntryNames = [...]string{
@@ -126,6 +158,17 @@ var ledgerEntryNames = [...]string{
 	NEGATIVE_UNL:     "NegativeUNL",
 	NFTOKEN_PAGE:     "NFTokenPage",
 	NFTOKEN_OFFER:    "NFTokenOffer",
+	ANY:              "Any",
+	CONTRACT:         "Contract",
+	EMITTEDTXN:       "EmittedTxn",
+	GENERATORMAP:     "GeneratorMap",
+	HOOK:             "Hook",
+	HOOKDEFINITION:   "HookDefinition",
+	HOOKSTATE:        "HookState",
+	IMPORTVLSEQ:      "ImportVlseq",
+	NICKNAME:         "Nickname",
+	UNLREPORT:        "UNLReport",
+	URITOKEN:         "URIToken",
 }
 
 var ledgerEntryTypes = map[string]LedgerEntryType{
@@ -145,66 +188,108 @@ var ledgerEntryTypes = map[string]LedgerEntryType{
 	"NegativeUNL":    NEGATIVE_UNL,
 	"NFTokenPage":    NFTOKEN_PAGE,
 	"NFTokenOffer":   NFTOKEN_OFFER,
+	"Any":            ANY,
+	"Contract":       CONTRACT,
+	"EmittedTxn":     EMITTEDTXN,
+	"GeneratorMap":   GENERATORMAP,
+	"Hook":           HOOK,
+	"HookDefinition": HOOKDEFINITION,
+	"HookState":      HOOKSTATE,
+	"ImportVlseq":    IMPORTVLSEQ,
+	"Nickname":       NICKNAME,
+	"UNLReport":      UNLREPORT,
+	"URIToken":       URITOKEN,
 }
 
 var txNames = [...]string{
-	PAYMENT:              "Payment",
-	ACCOUNT_SET:          "AccountSet",
-	ACCOUNT_DELETE:       "AccountDelete",
-	SET_REGULAR_KEY:      "SetRegularKey",
-	OFFER_CREATE:         "OfferCreate",
-	OFFER_CANCEL:         "OfferCancel",
-	TRUST_SET:            "TrustSet",
-	AMENDMENT:            "EnableAmendment",
-	SET_FEE:              "SetFee",
-	UNL_MODIFY:           "UNLModify",
-	TICKET_CREATE:        "TicketCreate",
-	ESCROW_CREATE:        "EscrowCreate",
-	ESCROW_FINISH:        "EscrowFinish",
-	ESCROW_CANCEL:        "EscrowCancel",
-	SIGNER_LIST_SET:      "SignerListSet",
-	PAYCHAN_CREATE:       "PaymentChannelCreate",
-	PAYCHAN_FUND:         "PaymentChannelFund",
-	PAYCHAN_CLAIM:        "PaymentChannelClaim",
-	CHECK_CREATE:         "CheckCreate",
-	CHECK_CASH:           "CheckCash",
-	CHECK_CANCEL:         "CheckCancel",
-	SET_DEPOSIT_PREAUTH:  "DepositPreauth",
-	NFTOKEN_MINT:         "NFTokenMint",
-	NFTOKEN_BURN:         "NFTokenBurn",
-	NFTOKEN_CREATE_OFFER: "NFTokenCreateOffer",
-	NFTOKEN_CANCEL_OFFER: "NFTokenCancelOffer",
-	NFTOKEN_ACCEPT_OFFER: "NFTokenAcceptOffer",
+	PAYMENT:                     "Payment",
+	ACCOUNT_SET:                 "AccountSet",
+	ACCOUNT_DELETE:              "AccountDelete",
+	SET_REGULAR_KEY:             "SetRegularKey",
+	OFFER_CREATE:                "OfferCreate",
+	OFFER_CANCEL:                "OfferCancel",
+	TRUST_SET:                   "TrustSet",
+	AMENDMENT:                   "EnableAmendment",
+	SET_FEE:                     "SetFee",
+	UNL_MODIFY:                  "UNLModify",
+	TICKET_CREATE:               "TicketCreate",
+	ESCROW_CREATE:               "EscrowCreate",
+	ESCROW_FINISH:               "EscrowFinish",
+	ESCROW_CANCEL:               "EscrowCancel",
+	SIGNER_LIST_SET:             "SignerListSet",
+	PAYCHAN_CREATE:              "PaymentChannelCreate",
+	PAYCHAN_FUND:                "PaymentChannelFund",
+	PAYCHAN_CLAIM:               "PaymentChannelClaim",
+	CHECK_CREATE:                "CheckCreate",
+	CHECK_CASH:                  "CheckCash",
+	CHECK_CANCEL:                "CheckCancel",
+	SET_DEPOSIT_PREAUTH:         "DepositPreauth",
+	NFTOKEN_MINT:                "NFTokenMint",
+	NFTOKEN_BURN:                "NFTokenBurn",
+	NFTOKEN_CREATE_OFFER:        "NFTokenCreateOffer",
+	NFTOKEN_CANCEL_OFFER:        "NFTokenCancelOffer",
+	NFTOKEN_ACCEPT_OFFER:        "NFTokenAcceptOffer",
+	IMPORT:                      "Import",
+	CLAIM_REWARD:                "ClaimReward",
+	CONTRACTTX:                  "Contract",
+	EMIT_FAILURE:                "EmitFailure",
+	GENESIS_MINT:                "GenesisMint",
+	INVOKE:                      "Invoke",
+	NICK_NAME_SET:               "NicknameSet",
+	SET_HOOK:                    "SetHook",
+	SPINAL_TAP:                  "SpinalTap",
+	UNL_REPORT:                  "UNLReport",
+	URI_TOKEN_BURN:              "URITokenBurn",
+	URI_TOKEN_BUY:               "URITokenBuy",
+	URI_TOKEN_CANCEL_SELL_OFFER: "URITokenCancelSellOffer",
+	URI_TOKEN_CREATE_SELL_OFFER: "URITokenCreateSellOffer",
+	URI_TOKEN_MINT:              "URITokenMint",
 }
 
 var txTypes = map[string]TransactionType{
-	"Payment":              PAYMENT,
-	"AccountSet":           ACCOUNT_SET,
-	"AccountDelete":        ACCOUNT_DELETE,
-	"SetRegularKey":        SET_REGULAR_KEY,
-	"OfferCreate":          OFFER_CREATE,
-	"OfferCancel":          OFFER_CANCEL,
-	"TrustSet":             TRUST_SET,
-	"EnableAmendment":      AMENDMENT,
-	"SetFee":               SET_FEE,
-	"UNLModify":            UNL_MODIFY,
-	"TicketCreate":         TICKET_CREATE,
-	"EscrowCreate":         ESCROW_CREATE,
-	"EscrowFinish":         ESCROW_FINISH,
-	"EscrowCancel":         ESCROW_CANCEL,
-	"SignerListSet":        SIGNER_LIST_SET,
-	"PaymentChannelCreate": PAYCHAN_CREATE,
-	"PaymentChannelFund":   PAYCHAN_FUND,
-	"PaymentChannelClaim":  PAYCHAN_CLAIM,
-	"CheckCreate":          CHECK_CREATE,
-	"CheckCash":            CHECK_CASH,
-	"CheckCancel":          CHECK_CANCEL,
-	"DepositPreauth":       SET_DEPOSIT_PREAUTH,
-	"NFTokenMint":          NFTOKEN_MINT,
-	"NFTokenBurn":          NFTOKEN_BURN,
-	"NFTokenCreateOffer":   NFTOKEN_CREATE_OFFER,
-	"NFTokenCancelOffer":   NFTOKEN_CANCEL_OFFER,
-	"NFTokenAcceptOffer":   NFTOKEN_ACCEPT_OFFER,
+	"Payment":                 PAYMENT,
+	"AccountSet":              ACCOUNT_SET,
+	"AccountDelete":           ACCOUNT_DELETE,
+	"SetRegularKey":           SET_REGULAR_KEY,
+	"OfferCreate":             OFFER_CREATE,
+	"OfferCancel":             OFFER_CANCEL,
+	"TrustSet":                TRUST_SET,
+	"EnableAmendment":         AMENDMENT,
+	"SetFee":                  SET_FEE,
+	"UNLModify":               UNL_MODIFY,
+	"TicketCreate":            TICKET_CREATE,
+	"EscrowCreate":            ESCROW_CREATE,
+	"EscrowFinish":            ESCROW_FINISH,
+	"EscrowCancel":            ESCROW_CANCEL,
+	"SignerListSet":           SIGNER_LIST_SET,
+	"PaymentChannelCreate":    PAYCHAN_CREATE,
+	"PaymentChannelFund":      PAYCHAN_FUND,
+	"PaymentChannelClaim":     PAYCHAN_CLAIM,
+	"CheckCreate":             CHECK_CREATE,
+	"CheckCash":               CHECK_CASH,
+	"CheckCancel":             CHECK_CANCEL,
+	"DepositPreauth":          SET_DEPOSIT_PREAUTH,
+	"NFTokenMint":             NFTOKEN_MINT,
+	"NFTokenBurn":             NFTOKEN_BURN,
+	"NFTokenCreateOffer":      NFTOKEN_CREATE_OFFER,
+	"NFTokenCancelOffer":      NFTOKEN_CANCEL_OFFER,
+	"NFTokenAcceptOffer":      NFTOKEN_ACCEPT_OFFER,
+	"Import":                  IMPORT,
+	"Amendment":               AMENDMENT,
+	"ClaimReward":             CLAIM_REWARD,
+	"Contract":                CONTRACTTX,
+	"EmitFailure":             EMIT_FAILURE,
+	"GenesisMint":             GENESIS_MINT,
+	"Invoke":                  INVOKE,
+	"NicknameSet":             NICK_NAME_SET,
+	"SetHook":                 SET_HOOK,
+	"SpinalTap":               SPINAL_TAP,
+	"UNLReport":               UNL_REPORT,
+	"URITokenBurn":            URI_TOKEN_BURN,
+	"URITokenBuy":             URI_TOKEN_BUY,
+	"URITokenCancelSellOffer": URI_TOKEN_CANCEL_SELL_OFFER,
+	"URITokenCreateSellOffer": URI_TOKEN_CREATE_SELL_OFFER,
+	"URITokenMint":            URI_TOKEN_MINT,
 }
 
 var HashableTypes []string

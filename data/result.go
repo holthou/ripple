@@ -71,6 +71,7 @@ const (
 	tecINSUFFICIENT_FUNDS
 	tecOBJECT_NOT_FOUND
 	tecINSUFFICIENT_PAYMENT
+	tecHOOK_REJECTED //XAH Invoke 交易返回的
 )
 
 const (
@@ -251,6 +252,7 @@ var resultNames = map[TransactionResult]struct {
 	tecINSUFFICIENT_FUNDS:            {"tecINSUFFICIENT_FUNDS", "Not enough funds available to complete requested transaction."},
 	tecOBJECT_NOT_FOUND:              {"tecOBJECT_NOT_FOUND", "A requested object could not be located."},
 	tecINSUFFICIENT_PAYMENT:          {"tecINSUFFICIENT_PAYMENT", "The payment is not sufficient."},
+	tecHOOK_REJECTED:                 {"tecHOOK_REJECTED", "。。。。"},
 
 	tefFAILURE:                     {"tefFAILURE", "Failed to apply."},
 	tefALREADY:                     {"tefALREADY", "The exact transaction was already in this ledger."},

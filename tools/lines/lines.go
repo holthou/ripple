@@ -54,6 +54,7 @@ func main() {
 	result, err := remote.AccountLines(*account, "closed", "")
 	checkErr(err)
 	// fmt.Println(*result.LedgerSequence) //TODO: wait for nikb fix
+	fmt.Println(len(result.Lines))
 	for _, line := range result.Lines {
 		terminal.Println(line, terminal.Default)
 	}

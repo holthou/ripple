@@ -107,6 +107,25 @@ type TxResult struct {
 	Validated bool `json:"validated"`
 }
 
+type TxDataCommand struct {
+	*Command
+	Binary      bool          `json:"binary"`
+	Transaction data.Hash256  `json:"transaction"`
+	Result      *TxDataResult `json:"result,omitempty"`
+}
+
+type TxDataResult struct {
+	Ctid        string `json:"ctid"`
+	Date        uint32 `json:"date"`
+	Hash        string `json:"hash"`
+	InLedger    uint32 `json:"inLedger"`
+	LedgerIndex uint32 `json:"ledger_index"`
+	Meta        string `json:"meta"`
+	Status      string `json:"status"`
+	Tx          string `json:"tx"`
+	Validated   bool   `json:"validated"`
+}
+
 // A shim to populate the Validated field before passing
 // control on to TransactionWithMetaData.UnmarshalJSON
 func (txr *TxResult) UnmarshalJSON(b []byte) error {
@@ -221,6 +240,7 @@ type AccountInfoCommand struct {
 	*Command
 	Account     data.Account       `json:"account"`
 	LedgerIndex interface{}        `json:"ledger_index,omitempty"`
+	SignerLists bool               `json:"signer_lists,omitempty"`
 	Result      *AccountInfoResult `json:"result,omitempty"`
 }
 
@@ -318,9 +338,10 @@ type ServerInfoResult struct {
 			ConvergeTimeS float64 `json:"converge_time_s"`
 			Proposers     int     `json:"proposers"`
 		} `json:"last_close"`
-		LoadFactor      int    `json:"load_factor"`
-		PubkeyNode      string `json:"pubkey_node"`
-		PublishedLedger string `json:"published_ledger"`
+		LoadFactor      float64 `json:"load_factor"`
+		NetworkId       int     `json:"network_id"`
+		PubkeyNode      string  `json:"pubkey_node"`
+		PublishedLedger string  `json:"published_ledger"`
 		Reporting       struct {
 			EtlSources []struct {
 				Connected              bool   `json:"connected"`
@@ -363,8 +384,8 @@ type ServerInfoResult struct {
 			Age            int     `json:"age"`
 			BaseFeeXrp     float64 `json:"base_fee_xrp"`
 			Hash           string  `json:"hash"`
-			ReserveBaseXrp int     `json:"reserve_base_xrp"`
-			ReserveIncXrp  int     `json:"reserve_inc_xrp"`
+			ReserveBaseXrp float64 `json:"reserve_base_xrp"`
+			ReserveIncXrp  float64 `json:"reserve_inc_xrp"`
 			Seq            int     `json:"seq"`
 		} `json:"validated_ledger"`
 		ValidationQuorum int `json:"validation_quorum"`
