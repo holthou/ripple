@@ -278,9 +278,9 @@ func (c *Client) SetHeader(key, value string) {
 //
 // The result must be a pointer so that package json can unmarshal into it. You
 // can also pass nil, in which case the result is ignored.
-func (c *Client) Call(result interface{}, method string, args ...interface{}) error {
+func (c *Client) Call(result interface{}, args interface{}) error {
 	ctx := context.Background()
-	return c.CallContext(ctx, result, method, args...)
+	return c.CallContext(ctx, result, args)
 }
 
 // CallContext performs a JSON-RPC call with the given arguments. If the context is
@@ -288,20 +288,20 @@ func (c *Client) Call(result interface{}, method string, args ...interface{}) er
 //
 // The result must be a pointer so that package json can unmarshal into it. You
 // can also pass nil, in which case the result is ignored.
-func (c *Client) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+func (c *Client) CallContext(ctx context.Context, result interface{}, args interface{}) error {
 	if result != nil && reflect.TypeOf(result).Kind() != reflect.Ptr {
 		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
 	}
-	msg, err := c.newMessage(method, args...)
+	msg, err := c.newMessage(args)
 	if err != nil {
 		return err
 	}
 	op := &requestOp{ids: []json.RawMessage{msg.ID}, resp: make(chan *jsonrpcMessage, 1)}
 
 	if c.isHTTP {
-		err = c.sendHTTP(ctx, op, msg)
+		err = c.sendHTTP(ctx, op, msg.Command)
 	} else {
-		err = c.send(ctx, op, msg)
+		err = c.send(ctx, op, msg.Command)
 	}
 	if err != nil {
 		return err
@@ -311,8 +311,8 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, method str
 	switch resp, err := op.wait(ctx, c); {
 	case err != nil:
 		return err
-	case resp.Error != nil:
-		return resp.Error
+	case resp.Error() != "":
+		return fmt.Errorf(resp.Error())
 	case len(resp.Result) == 0:
 		return ErrNoResult
 	default:
@@ -351,7 +351,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 		resp: make(chan *jsonrpcMessage, len(b)),
 	}
 	for i, elem := range b {
-		msg, err := c.newMessage(elem.Method, elem.Args...)
+		msg, err := c.newMessage(elem.Args)
 		if err != nil {
 			return err
 		}
@@ -378,8 +378,8 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 		// The element is guaranteed to be present because dispatch
 		// only sends valid IDs to our channel.
 		elem := &b[byID[string(resp.ID)]]
-		if resp.Error != nil {
-			elem.Error = resp.Error
+		if resp.Error() != "" {
+			elem.Error = fmt.Errorf(resp.Error())
 			continue
 		}
 		if len(resp.Result) == 0 {
@@ -394,7 +394,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 // Notify sends a notification, i.e. a method call that doesn't expect a response.
 func (c *Client) Notify(ctx context.Context, method string, args ...interface{}) error {
 	op := new(requestOp)
-	msg, err := c.newMessage(method, args...)
+	msg, err := c.newMessage(args)
 	if err != nil {
 		return err
 	}
@@ -406,16 +406,16 @@ func (c *Client) Notify(ctx context.Context, method string, args ...interface{})
 	return c.send(ctx, op, msg)
 }
 
-// EthSubscribe registers a subscription under the "eth" namespace.
-func (c *Client) EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
-	return c.Subscribe(ctx, "eth", channel, args...)
-}
-
-// ShhSubscribe registers a subscription under the "shh" namespace.
-// Deprecated: use Subscribe(ctx, "shh", ...).
-func (c *Client) ShhSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
-	return c.Subscribe(ctx, "shh", channel, args...)
-}
+//// EthSubscribe registers a subscription under the "eth" namespace.
+//func (c *Client) EthSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
+//	return c.Subscribe(ctx, "eth", channel, args...)
+//}
+//
+//// ShhSubscribe registers a subscription under the "shh" namespace.
+//// Deprecated: use Subscribe(ctx, "shh", ...).
+//func (c *Client) ShhSubscribe(ctx context.Context, channel interface{}, args ...interface{}) (*ClientSubscription, error) {
+//	return c.Subscribe(ctx, "shh", channel, args...)
+//}
 
 // Subscribe calls the "<namespace>_subscribe" method with the given arguments,
 // registering a subscription. Server notifications for the subscription are
@@ -442,7 +442,7 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 		return nil, ErrNotificationsUnsupported
 	}
 
-	msg, err := c.newMessage(namespace+subscribeMethodSuffix, args...)
+	msg, err := c.newMessage(args)
 	if err != nil {
 		return nil, err
 	}
@@ -463,11 +463,11 @@ func (c *Client) Subscribe(ctx context.Context, namespace string, channel interf
 	return op.sub, nil
 }
 
-func (c *Client) newMessage(method string, paramsIn ...interface{}) (*jsonrpcMessage, error) {
-	msg := &jsonrpcMessage{Version: vsn, ID: c.nextID(), Method: method}
+func (c *Client) newMessage(paramsIn interface{}) (*jsonrpcMessage, error) {
+	msg := &jsonrpcMessage{ID: c.nextID()}
 	if paramsIn != nil { // prevent sending "params":null
 		var err error
-		if msg.Params, err = json.Marshal(paramsIn); err != nil {
+		if msg.Command, err = json.Marshal(paramsIn); err != nil {
 			return nil, err
 		}
 	}
@@ -520,7 +520,7 @@ func (c *Client) reconnect(ctx context.Context) error {
 	}
 	newconn, err := c.reconnectFunc(ctx)
 	if err != nil {
-		glog.Infof("RPC client reconnect failed", "err", err)
+		glog.Infof("RPC client reconnect failed err:%s", err)
 		return err
 	}
 	select {
@@ -569,13 +569,13 @@ func (c *Client) dispatch(codec ServerCodec) {
 			}
 
 		case err := <-c.readErr:
-			glog.Infof("RPC connection read error", "err", err)
+			glog.Infof("RPC connection read error err %s", err)
 			conn.close(err, lastOp)
 			reading = false
 
 		// Reconnect:
 		case newcodec := <-c.reconnected:
-			glog.Infof("RPC client reconnected", "reading", reading, "conn", newcodec.remoteAddr())
+			glog.Infof("RPC client reconnected reading:%t conn:%s", reading, newcodec.remoteAddr())
 			if reading {
 				// Wait for the previous read loop to exit. This is a rare case which
 				// happens if this loop isn't notified in time after the connection breaks.

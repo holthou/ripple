@@ -120,26 +120,26 @@ func (n *Notifier) CreateSubscription() *Subscription {
 
 // Notify sends a notification to the client with the given data as payload.
 // If an error occurs the RPC connection is closed and the error is returned.
-func (n *Notifier) Notify(id ID, data interface{}) error {
-	enc, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	n.mu.Lock()
-	defer n.mu.Unlock()
-
-	if n.sub == nil {
-		panic("can't Notify before subscription is created")
-	} else if n.sub.ID != id {
-		panic("Notify with wrong ID")
-	}
-	if n.activated {
-		return n.send(n.sub, enc)
-	}
-	n.buffer = append(n.buffer, enc)
-	return nil
-}
+//func (n *Notifier) Notify(id ID, data interface{}) error {
+//	enc, err := json.Marshal(data)
+//	if err != nil {
+//		return err
+//	}
+//
+//	n.mu.Lock()
+//	defer n.mu.Unlock()
+//
+//	if n.sub == nil {
+//		panic("can't Notify before subscription is created")
+//	} else if n.sub.ID != id {
+//		panic("Notify with wrong ID")
+//	}
+//	if n.activated {
+//		return n.send(n.sub, enc)
+//	}
+//	n.buffer = append(n.buffer, enc)
+//	return nil
+//}
 
 // Closed returns a channel that is closed when the RPC connection is closed.
 // Deprecated: use subscription error channel
@@ -159,28 +159,28 @@ func (n *Notifier) takeSubscription() *Subscription {
 // activate is called after the subscription ID was sent to client. Notifications are
 // buffered before activation. This prevents notifications being sent to the client before
 // the subscription ID is sent to the client.
-func (n *Notifier) activate() error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
+//func (n *Notifier) activate() error {
+//	n.mu.Lock()
+//	defer n.mu.Unlock()
+//
+//	for _, data := range n.buffer {
+//		if err := n.send(n.sub, data); err != nil {
+//			return err
+//		}
+//	}
+//	n.activated = true
+//	return nil
+//}
 
-	for _, data := range n.buffer {
-		if err := n.send(n.sub, data); err != nil {
-			return err
-		}
-	}
-	n.activated = true
-	return nil
-}
-
-func (n *Notifier) send(sub *Subscription, data json.RawMessage) error {
-	params, _ := json.Marshal(&subscriptionResult{ID: string(sub.ID), Result: data})
-	ctx := context.Background()
-	return n.h.conn.writeJSON(ctx, &jsonrpcMessage{
-		Version: vsn,
-		Method:  n.namespace + notificationMethodSuffix,
-		Params:  params,
-	})
-}
+//func (n *Notifier) send(sub *Subscription, data json.RawMessage) error {
+//	params, _ := json.Marshal(&subscriptionResult{ID: string(sub.ID), Result: data})
+//	ctx := context.Background()
+//	return n.h.conn.writeJSON(ctx, &jsonrpcMessage{
+//		Version: vsn,
+//		Method:  n.namespace + notificationMethodSuffix,
+//		Params:  params,
+//	})
+//}
 
 // A Subscription is created by a notifier and tied to that notifier. The client can use
 // this subscription to wait for an unsubscribe request for the client, see Err().
@@ -371,5 +371,5 @@ func (sub *ClientSubscription) unmarshal(result json.RawMessage) (interface{}, e
 
 func (sub *ClientSubscription) requestUnsubscribe() error {
 	var result interface{}
-	return sub.client.Call(&result, sub.namespace+unsubscribeMethodSuffix, sub.subid)
+	return sub.client.Call(&result, sub.subid)
 }

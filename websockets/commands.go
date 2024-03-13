@@ -76,26 +76,6 @@ type AccountTxResult struct {
 	Transactions data.TransactionSlice  `json:"transactions,omitempty"`
 }
 
-func newAccountTxCommand(account data.Account, pageSize int, marker map[string]interface{}, minLedger, maxLedger int64) *AccountTxCommand {
-	return &AccountTxCommand{
-		Command:   newCommand("account_tx"),
-		Account:   account,
-		MinLedger: minLedger,
-		MaxLedger: maxLedger,
-		Limit:     pageSize,
-		Marker:    marker,
-	}
-}
-
-func newBinaryLedgerDataCommand(ledger interface{}, marker *data.Hash256) *BinaryLedgerDataCommand {
-	return &BinaryLedgerDataCommand{
-		Command: newCommand("ledger_data"),
-		Ledger:  ledger,
-		Binary:  true,
-		Marker:  marker,
-	}
-}
-
 type TxCommand struct {
 	*Command
 	Transaction data.Hash256 `json:"transaction"`

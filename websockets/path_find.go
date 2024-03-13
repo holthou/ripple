@@ -1,6 +1,7 @@
 package websockets
 
 import (
+	"context"
 	"github.com/rubblelabs/ripple/data"
 )
 
@@ -36,7 +37,7 @@ type SourceCurrency struct {
 	Currency string `json:"currency"`
 }
 
-func (r *Remote) PathFindCreate(src, dest data.Account, amt data.Amount, sendMax *data.Amount, sourceCurrencies *[]SourceCurrency) (*PathFindCreateResult, error) {
+func (c *Client) PathFindCreate(ctx context.Context, src, dest data.Account, amt data.Amount, sendMax *data.Amount, sourceCurrencies *[]SourceCurrency) (*PathFindCreateResult, error) {
 	cmd := &PathFindCreateCommand{
 		Command:            newCommand("path_find"),
 		Subcommand:         "create",
@@ -46,8 +47,9 @@ func (r *Remote) PathFindCreate(src, dest data.Account, amt data.Amount, sendMax
 		SendMax:            sendMax,
 		SourceCurrencies:   sourceCurrencies,
 	}
-	r.outgoing <- cmd
-	<-cmd.Ready
+	if err := c.CallContext(ctx, &cmd.Result, cmd); err != nil {
+		return nil, err
+	}
 	if cmd.CommandError != nil {
 		return nil, cmd.CommandError
 	}

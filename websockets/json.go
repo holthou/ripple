@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 	"sync"
 	"time"
 )
@@ -48,43 +47,55 @@ type subscriptionResult struct {
 
 // A value of this type can a JSON-RPC request, notification, successful response or
 // error response. Which one it is depends on the fields.
+//type jsonrpcMessage struct {
+//	Version string          `json:"jsonrpc,omitempty"`
+//	ID      json.RawMessage `json:"id,omitempty"`
+//	Method  string          `json:"method,omitempty"`
+//	Params  json.RawMessage `json:"params,omitempty"`
+//	Error   *jsonError      `json:"error,omitempty"`
+//	Result  json.RawMessage `json:"result,omitempty"`
+//}
+
 type jsonrpcMessage struct {
-	Version string          `json:"jsonrpc,omitempty"`
+	jsonError
+
+	//Method  string          `json:"method,omitempty"`
+	//Params  json.RawMessage `json:"params,omitempty"`
+	//Version string          `json:"jsonrpc,omitempty"`
+
 	ID      json.RawMessage `json:"id,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Error   *jsonError      `json:"error,omitempty"`
+	Command json.RawMessage `json:"command,omitempty"`
 	Result  json.RawMessage `json:"result,omitempty"`
 }
 
 func (msg *jsonrpcMessage) isNotification() bool {
-	return msg.ID == nil && msg.Method != ""
+	return msg.ID == nil
 }
 
 func (msg *jsonrpcMessage) isCall() bool {
-	return msg.hasValidID() && msg.Method != ""
+	return msg.hasValidID()
 }
 
 func (msg *jsonrpcMessage) isResponse() bool {
-	return msg.hasValidID() && msg.Method == "" && msg.Params == nil && (msg.Result != nil || msg.Error != nil)
+	return msg.hasValidID() && (msg.Result != nil || msg.Error() != "")
 }
 
 func (msg *jsonrpcMessage) hasValidID() bool {
 	return len(msg.ID) > 0 && msg.ID[0] != '{' && msg.ID[0] != '['
 }
 
-func (msg *jsonrpcMessage) isSubscribe() bool {
-	return strings.HasSuffix(msg.Method, subscribeMethodSuffix)
-}
-
-func (msg *jsonrpcMessage) isUnsubscribe() bool {
-	return strings.HasSuffix(msg.Method, unsubscribeMethodSuffix)
-}
-
-func (msg *jsonrpcMessage) namespace() string {
-	elem := strings.SplitN(msg.Method, serviceMethodSeparator, 2)
-	return elem[0]
-}
+//func (msg *jsonrpcMessage) isSubscribe() bool {
+//	return strings.HasSuffix(msg.Method, subscribeMethodSuffix)
+//}
+//
+//func (msg *jsonrpcMessage) isUnsubscribe() bool {
+//	return strings.HasSuffix(msg.Method, unsubscribeMethodSuffix)
+//}
+//
+//func (msg *jsonrpcMessage) namespace() string {
+//	elem := strings.SplitN(msg.Method, serviceMethodSeparator, 2)
+//	return elem[0]
+//}
 
 func (msg *jsonrpcMessage) String() string {
 	b, _ := json.Marshal(msg)
@@ -103,36 +114,40 @@ func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 		// TODO: wrap with 'internal server error'
 		return msg.errorResponse(err)
 	}
-	return &jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+	return &jsonrpcMessage{ID: msg.ID, Result: enc}
 }
 
 func errorMessage(err error) *jsonrpcMessage {
-	msg := &jsonrpcMessage{Version: vsn, ID: null, Error: &jsonError{
+	msg := &jsonrpcMessage{ID: null, jsonError: jsonError{
 		Code:    defaultErrorCode,
 		Message: err.Error(),
 	}}
 	ec, ok := err.(Error)
 	if ok {
-		msg.Error.Code = ec.ErrorCode()
+		msg.Code = ec.ErrorCode()
 	}
 	de, ok := err.(DataError)
 	if ok {
-		msg.Error.Data = de.ErrorData()
+		msg.Message = de.ErrorData()
 	}
 	return msg
 }
 
 type jsonError struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data,omitempty"`
+	//Code    int         `json:"code"`
+	//Message string      `json:"message"`
+	//Data    interface{} `json:"data,omitempty"`
+
+	Name    string      `json:"error"`
+	Code    int         `json:"error_code"`
+	Message interface{} `json:"error_message,omitempty"`
 }
 
 func (err *jsonError) Error() string {
-	if err.Message == "" {
-		return fmt.Sprintf("json-rpc error %d", err.Code)
+	if err.Name != "" {
+		return fmt.Sprintf("%s %d %s", err.Name, err.Code, err.Message)
 	}
-	return err.Message
+	return ""
 }
 
 func (err *jsonError) ErrorCode() int {
@@ -140,7 +155,7 @@ func (err *jsonError) ErrorCode() int {
 }
 
 func (err *jsonError) ErrorData() interface{} {
-	return err.Data
+	return err.Message
 }
 
 // Conn is a subset of the methods of net.Conn which are sufficient for ServerCodec.

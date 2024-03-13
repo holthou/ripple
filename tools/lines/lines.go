@@ -1,13 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
-	"github.com/golang/glog"
 	"os"
 
-	"github.com/rubblelabs/ripple/data"
-	"github.com/rubblelabs/ripple/terminal"
 	"github.com/rubblelabs/ripple/websockets"
 )
 
@@ -39,23 +37,20 @@ func checkErr(err error) {
 
 func main() {
 
-	err := fmt.Errorf("1212qw")
-	glog.Errorln("RPC client reconnect failed", "err", err)
+	//err := fmt.Errorf("1212qw")
+	//glog.Errorln("RPC client reconnect failed", "err", err)
 
-	if len(os.Args) == 1 {
-		showUsage()
-	}
-	flag.CommandLine.Parse(os.Args[2:])
+	remote, err := websockets.Dial(*host)
+	checkErr(err)
+	//account, err := data.NewAccountFromAddress(os.Args[1])
+	//checkErr(err)
 
-	remote, err := websockets.NewRemote(*host)
+	result, err := remote.Ledger(context.TODO(), "closed", false)
 	checkErr(err)
-	account, err := data.NewAccountFromAddress(os.Args[1])
-	checkErr(err)
-	result, err := remote.AccountLines(*account, "closed", "")
-	checkErr(err)
-	// fmt.Println(*result.LedgerSequence) //TODO: wait for nikb fix
-	fmt.Println(len(result.Lines))
-	for _, line := range result.Lines {
-		terminal.Println(line, terminal.Default)
-	}
+	fmt.Println(result)
+	//// fmt.Println(*result.LedgerSequence) //TODO: wait for nikb fix
+	//fmt.Println(len(result.Lines))
+	//for _, line := range result.Lines {
+	//	terminal.Println(line, terminal.Default)
+	//}
 }

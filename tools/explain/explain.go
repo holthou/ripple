@@ -4,6 +4,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -94,7 +95,7 @@ func main() {
 	}
 	flags.Parse(os.Args[2:])
 	matches := argumentRegex.FindStringSubmatch(os.Args[1])
-	r, err := websockets.NewRemote(*host)
+	r, err := websockets.Dial(*host)
 	checkErr(err)
 	glog.Infoln("Connected to: ", *host)
 	switch {
@@ -104,13 +105,13 @@ func main() {
 		hash, err := data.NewHash256(matches[1])
 		checkErr(err)
 		fmt.Println("Getting transaction: ", hash.String())
-		result, err := r.Tx(*hash)
+		result, err := r.Tx(context.TODO(), *hash)
 		checkErr(err)
 		explain(&result.TransactionWithMetaData, terminal.Default)
 	case len(matches[2]) > 0:
 		seq, err := strconv.ParseUint(matches[2], 10, 32)
 		checkErr(err)
-		ledger, err := r.Ledger(seq, true)
+		ledger, err := r.Ledger(context.TODO(), seq, true)
 		checkErr(err)
 		fmt.Println("Getting transactions for: ", seq)
 		for _, txm := range ledger.Ledger.Transactions {
@@ -120,7 +121,7 @@ func main() {
 		account, err := data.NewAccountFromAddress(matches[3])
 		checkErr(err)
 		fmt.Println("Getting transactions for: ", account.String())
-		for txm := range r.AccountTx(*account, *pageSize, -1, -1) {
+		for txm := range r.AccountTx(context.TODO(), *account, *pageSize, -1, -1) {
 			explain(txm.Data, terminal.ShowLedgerSequence)
 		}
 	case len(matches[4]) > 0:
