@@ -57,7 +57,7 @@ type subscriptionResult struct {
 //}
 
 type jsonrpcMessage struct {
-	jsonError
+	CommandError
 
 	//Method  string          `json:"method,omitempty"`
 	//Params  json.RawMessage `json:"params,omitempty"`
@@ -82,6 +82,10 @@ func (msg *jsonrpcMessage) isResponse() bool {
 
 func (msg *jsonrpcMessage) hasValidID() bool {
 	return len(msg.ID) > 0 && msg.ID[0] != '{' && msg.ID[0] != '['
+}
+
+func (msg *jsonrpcMessage) MsgError() *CommandError {
+	return &msg.CommandError
 }
 
 //func (msg *jsonrpcMessage) isSubscribe() bool {
@@ -118,7 +122,7 @@ func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 }
 
 func errorMessage(err error) *jsonrpcMessage {
-	msg := &jsonrpcMessage{ID: null, jsonError: jsonError{
+	msg := &jsonrpcMessage{ID: null, CommandError: CommandError{
 		Code:    defaultErrorCode,
 		Message: err.Error(),
 	}}
@@ -128,35 +132,35 @@ func errorMessage(err error) *jsonrpcMessage {
 	}
 	de, ok := err.(DataError)
 	if ok {
-		msg.Message = de.ErrorData()
+		msg.Message = de.Error()
 	}
 	return msg
 }
 
-type jsonError struct {
-	//Code    int         `json:"code"`
-	//Message string      `json:"message"`
-	//Data    interface{} `json:"data,omitempty"`
-
-	Name    string      `json:"error"`
-	Code    int         `json:"error_code"`
-	Message interface{} `json:"error_message,omitempty"`
-}
-
-func (err *jsonError) Error() string {
-	if err.Name != "" {
-		return fmt.Sprintf("%s %d %s", err.Name, err.Code, err.Message)
-	}
-	return ""
-}
-
-func (err *jsonError) ErrorCode() int {
-	return err.Code
-}
-
-func (err *jsonError) ErrorData() interface{} {
-	return err.Message
-}
+//type jsonError struct {
+//	//Code    int         `json:"code"`
+//	//Message string      `json:"message"`
+//	//Data    interface{} `json:"data,omitempty"`
+//
+//	Name    string      `json:"error"`
+//	Code    int         `json:"error_code"`
+//	Message interface{} `json:"error_message,omitempty"`
+//}
+//
+//func (err *jsonError) Error() string {
+//	if err.Name != "" {
+//		return fmt.Sprintf("%s %d %s", err.Name, err.Code, err.Message)
+//	}
+//	return ""
+//}
+//
+//func (err *jsonError) ErrorCode() int {
+//	return err.Code
+//}
+//
+//func (err *jsonError) ErrorData() interface{} {
+//	return err.Message
+//}
 
 // Conn is a subset of the methods of net.Conn which are sufficient for ServerCodec.
 type Conn interface {

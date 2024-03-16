@@ -120,6 +120,15 @@ func main() {
 	case len(matches[3]) > 0:
 		account, err := data.NewAccountFromAddress(matches[3])
 		checkErr(err)
+
+		fmt.Println("Getting account for: ", account.String())
+		accInfo, err := r.AccountInfo(context.TODO(), *account, "closed")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("%+v \n", *accInfo)
+
 		fmt.Println("Getting transactions for: ", account.String())
 		for txm := range r.AccountTx(context.TODO(), *account, *pageSize, -1, -1) {
 			explain(txm.Data, terminal.ShowLedgerSequence)

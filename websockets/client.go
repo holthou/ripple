@@ -312,7 +312,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, args inter
 	case err != nil:
 		return err
 	case resp.Error() != "":
-		return fmt.Errorf(resp.Error())
+		return resp.MsgError()
 	case len(resp.Result) == 0:
 		return ErrNoResult
 	default:

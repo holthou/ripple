@@ -21,6 +21,21 @@ type CommandError struct {
 	Message string `json:"error_message"`
 }
 
+func (err *CommandError) Error() string {
+	if err.Name != "" {
+		return fmt.Sprintf("%s %d %s", err.Name, err.Code, err.Message)
+	}
+	return ""
+}
+
+func (err *CommandError) ErrorCode() int {
+	return err.Code
+}
+
+func (err *CommandError) ErrorData() interface{} {
+	return err.Message
+}
+
 type Command struct {
 	*CommandError
 	Id     uint64        `json:"id"`
@@ -45,10 +60,6 @@ func (c *Command) Fail(message string) {
 
 func (c *Command) IncrementId() {
 	c.Id = atomic.AddUint64(&counter, 1)
-}
-
-func (e *CommandError) Error() string {
-	return fmt.Sprintf("%s %d %s", e.Name, e.Code, e.Message)
 }
 
 func newCommand(command string) *Command {
