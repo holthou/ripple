@@ -166,20 +166,21 @@ func Dial(rawurl string) (*Client, error) {
 //
 // The context is used to cancel or time out the initial connection establishment. It does
 // not affect subsequent interactions with the client.
+// 基于xrp 节点的特性，http协议和wss协议的格式不同，底层仅支持了ws/wss协议
 func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 	u, err := url.Parse(rawurl)
 	if err != nil {
 		return nil, err
 	}
 	switch u.Scheme {
-	case "http", "https":
-		return DialHTTP(rawurl)
+	//case "http", "https":
+	//	return DialHTTP(rawurl)
 	case "ws", "wss":
 		return DialWebsocket(ctx, rawurl, "")
-	case "stdio":
-		return DialStdIO(ctx)
-	case "":
-		return DialIPC(ctx, rawurl)
+	//case "stdio":
+	//	return DialStdIO(ctx)
+	//case "":
+	//	return DialIPC(ctx, rawurl)
 	default:
 		return nil, fmt.Errorf("no known transport for URL scheme %q", u.Scheme)
 	}
@@ -512,6 +513,7 @@ func (c *Client) reconnect(ctx context.Context) error {
 	if c.reconnectFunc == nil {
 		return errDead
 	}
+	glog.Errorln("start to reconnect... ")
 
 	if _, ok := ctx.Deadline(); !ok {
 		var cancel func()
@@ -520,9 +522,10 @@ func (c *Client) reconnect(ctx context.Context) error {
 	}
 	newconn, err := c.reconnectFunc(ctx)
 	if err != nil {
-		glog.Infof("RPC client reconnect failed err:%s", err)
+		glog.Errorln("RPC client reconnect failed ", err)
 		return err
 	}
+	glog.Errorln("reconnect success, start recover ")
 	select {
 	case c.reconnected <- newconn:
 		c.writeConn = newconn
@@ -553,7 +556,7 @@ func (c *Client) dispatch(codec ServerCodec) {
 	}()
 
 	// Spawn the initial read loop.
-	go c.read(codec)
+	go c.read(codec) //解析从服务端返回的原始信息
 
 	for {
 		select {
@@ -569,13 +572,13 @@ func (c *Client) dispatch(codec ServerCodec) {
 			}
 
 		case err := <-c.readErr:
-			glog.Infof("RPC connection read error err %s", err)
+			glog.Errorln("RPC connection read error:", err)
 			conn.close(err, lastOp)
 			reading = false
 
 		// Reconnect:
 		case newcodec := <-c.reconnected:
-			glog.Infof("RPC client reconnected reading:%t conn:%s", reading, newcodec.remoteAddr())
+			glog.Errorln("RPC client reconnected reading:", reading, " conn:", newcodec.remoteAddr())
 			if reading {
 				// Wait for the previous read loop to exit. This is a rare case which
 				// happens if this loop isn't notified in time after the connection breaks.

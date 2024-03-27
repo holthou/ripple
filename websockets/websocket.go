@@ -232,6 +232,7 @@ func wsClientHeaders(endpoint, origin string) (string, http.Header, error) {
 	return endpointURL.String(), header, nil
 }
 
+// ServerCodec TODO
 type websocketCodec struct {
 	*jsonCodec
 	conn *websocket.Conn

@@ -226,6 +226,7 @@ func (c *jsonCodec) remoteAddr() string {
 	return c.remote
 }
 
+// 从接收流中接收的原始信息
 func (c *jsonCodec) readBatch() (messages []*jsonrpcMessage, batch bool, err error) {
 	// Decode the next JSON object in the input stream.
 	// This verifies basic syntax, etc.
