@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
+	"time"
 )
 
 // handler handles JSON-RPC messages. There is one handler per connection. Note that
@@ -127,16 +128,17 @@ func (h *handler) handleMsg(msg *jsonrpcMessage) {
 	if ok := h.handleImmediate(msg); ok {
 		return
 	}
-	//h.startCallProc(func(cp *callProc) {
-	//	answer := h.handleCallMsg(cp, msg)
-	//	h.addSubscriptions(cp.notifiers)
-	//	if answer != nil {
-	//		h.conn.writeJSON(cp.ctx, answer)
-	//	}
-	//	for _, n := range cp.notifiers {
-	//		n.activate()
-	//	}
-	//})
+	glog.Errorln("handleMsg -> startCallProc:", string(msg.Command))
+	h.startCallProc(func(cp *callProc) {
+		answer := h.handleCallMsg(cp, msg)
+		h.addSubscriptions(cp.notifiers)
+		if answer != nil {
+			h.conn.writeJSON(cp.ctx, answer)
+		}
+		//for _, n := range cp.notifiers {
+		//	n.activate()
+		//}
+	})
 }
 
 // close cancels all requests except for inflightReq and waits for
@@ -222,17 +224,20 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 // handleImmediate executes non-call messages. It returns false if the message is a
 // call or requires a reply.
 func (h *handler) handleImmediate(msg *jsonrpcMessage) bool {
-	//start := time.Now()
+	start := time.Now()
 	switch {
-	//case msg.isNotification():
-	//	if strings.HasSuffix(msg.Method, notificationMethodSuffix) {
-	//		h.handleSubscriptionResult(msg)
-	//		return true
-	//	}
-	//	return false
+	case msg.isNotification():
+		// 这里不处理订阅，直接返回false，增加日志
+		//glog.Errorln()msg.
+		glog.Errorln("handleImmediate isNotification " + string(msg.Command))
+		//if strings.HasSuffix(msg.Method, notificationMethodSuffix) {
+		//	h.handleSubscriptionResult(msg)
+		//	return true
+		//}
+		return false
 	case msg.isResponse():
 		h.handleResponse(msg)
-		//glog.Infoln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
+		glog.Errorln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
 		return true
 	default:
 		return false
@@ -278,53 +283,54 @@ func (h *handler) handleResponse(msg *jsonrpcMessage) {
 	}
 }
 
-//// handleCallMsg executes a call message and returns the answer.
-//func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
-//	start := time.Now()
-//	switch {
-//	case msg.isNotification():
-//		h.handleCall(ctx, msg)
-//		//glog.Infoln("Served "+msg.Method, "duration", time.Since(start))
-//		return nil
-//	case msg.isCall():
-//		resp := h.handleCall(ctx, msg)
-//		var ctx []interface{}
-//		ctx = append(ctx, "reqid", idForLog{msg.ID}, "duration", time.Since(start))
-//		if resp.Error() != "" {
-//			ctx = append(ctx, "err", resp.Error())
-//			//glog.Warningf("Served "+msg.Method, ctx...)
-//		} else {
-//			//glog.Infof("Served "+msg.Method, ctx...)
-//		}
-//		return resp
-//	case msg.hasValidID():
-//		return msg.errorResponse(&invalidRequestError{"invalid request"})
-//	default:
-//		return errorMessage(&invalidRequestError{"invalid request"})
-//	}
-//}
+// handleCallMsg executes a call message and returns the answer.
+func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
+	start := time.Now()
+	switch {
+	case msg.isNotification():
+		h.handleCall(ctx, msg)
+		glog.Errorln("Served "+msg.Name, "duration", time.Since(start))
+		return nil
+	case msg.isCall():
+		resp := h.handleCall(ctx, msg)
+		var ctx []interface{}
+		ctx = append(ctx, "reqid", idForLog{msg.ID}, "duration", time.Since(start))
+		if resp.Error() != "" {
+			ctx = append(ctx, "err", resp.Error())
+			glog.Errorln("Served "+msg.Name, ctx)
+		} else {
+			glog.Errorln("Served "+msg.Name, ctx)
+		}
+		return resp
+	case msg.hasValidID():
+		return msg.errorResponse(&invalidRequestError{"invalid request"})
+	default:
+		return errorMessage(&invalidRequestError{"invalid request"})
+	}
+}
 
 // handleCall processes method calls.
-//func (h *handler) handleCall(cp *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
-//	if msg.isSubscribe() {
-//		return h.handleSubscribe(cp, msg)
-//	}
-//	var callb *callback
-//	if msg.isUnsubscribe() {
-//		callb = h.unsubscribeCb
-//	} else {
-//		callb = h.reg.callback(msg.Method)
-//	}
-//	if callb == nil {
-//		return msg.errorResponse(&methodNotFoundError{method: msg.Method})
-//	}
-//	args, err := parsePositionalArguments(msg.Params, callb.argTypes)
-//	if err != nil {
-//		return msg.errorResponse(&invalidParamsError{err.Error()})
-//	}
-//	answer := h.runMethod(cp.ctx, msg, callb, args)
-//	return answer
-//}
+func (h *handler) handleCall(cp *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
+	//if msg.isSubscribe() {
+	//	return h.handleSubscribe(cp, msg)
+	//}
+	var callb *callback
+	//if msg.isUnsubscribe() {
+	//	callb = h.unsubscribeCb
+	//} else {
+	//callb = h.reg.callback(msg.Method)
+	callb = h.reg.callback(msg.Name)
+	//}
+	if callb == nil {
+		return msg.errorResponse(&methodNotFoundError{method: msg.Name})
+	}
+	args, err := parsePositionalArguments(msg.Command, callb.argTypes)
+	if err != nil {
+		return msg.errorResponse(&invalidParamsError{err.Error()})
+	}
+	answer := h.runMethod(cp.ctx, msg, callb, args)
+	return answer
+}
 
 // handleSubscribe processes *_subscribe method calls.
 //func (h *handler) handleSubscribe(cp *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
@@ -360,13 +366,13 @@ func (h *handler) handleResponse(msg *jsonrpcMessage) {
 //}
 
 // runMethod runs the Go callback for an RPC method.
-//func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) *jsonrpcMessage {
-//	result, err := callb.call(ctx, msg.Method, args)
-//	if err != nil {
-//		return msg.errorResponse(err)
-//	}
-//	return msg.response(result)
-//}
+func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) *jsonrpcMessage {
+	result, err := callb.call(ctx, msg.Name, args)
+	if err != nil {
+		return msg.errorResponse(err)
+	}
+	return msg.response(result)
+}
 
 // unsubscribe is the callback function for all *_unsubscribe calls.
 func (h *handler) unsubscribe(ctx context.Context, id ID) (bool, error) {
