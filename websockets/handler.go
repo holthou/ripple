@@ -237,7 +237,7 @@ func (h *handler) handleImmediate(msg *jsonrpcMessage) bool {
 		return false
 	case msg.isResponse():
 		h.handleResponse(msg)
-		glog.Errorln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
+		glog.Infoln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
 		return true
 	default:
 		return false
