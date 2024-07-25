@@ -254,6 +254,7 @@ func (c *jsonCodec) writeJSON(ctx context.Context, v interface{}) error {
 		deadline = time.Now().Add(defaultWriteTimeout)
 	}
 	c.conn.SetWriteDeadline(deadline)
+	//TODO 2 写入数据
 	return c.encode(v)
 }
 

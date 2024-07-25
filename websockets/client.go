@@ -480,6 +480,7 @@ func (c *Client) newMessage(paramsIn interface{}) (*jsonrpcMessage, error) {
 func (c *Client) send(ctx context.Context, op *requestOp, msg interface{}) error {
 	select {
 	case c.reqInit <- op:
+		// TODO 1 响应的ID在这个注册，同时讲请求发送给对端节点
 		err := c.write(ctx, msg, false)
 		c.reqSent <- err
 		return err
@@ -501,6 +502,13 @@ func (c *Client) write(ctx context.Context, msg interface{}, retry bool) error {
 	}
 	err := c.writeConn.writeJSON(ctx, msg)
 	if err != nil {
+		//增加日志
+		if m, ok := msg.(json.RawMessage); ok {
+			glog.Errorln("writeConn.writeJSON", "msg", string(m), "err", err)
+		} else {
+			glog.Errorln("writeConn.writeJSON", "msg", m, "err", err)
+		}
+
 		c.writeConn = nil
 		if !retry {
 			return c.write(ctx, msg, true)
