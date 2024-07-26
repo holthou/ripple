@@ -323,6 +323,7 @@ func (h *handler) addRequestOp(op *requestOp) {
 
 // removeRequestOps stops waiting for the given request IDs.
 func (h *handler) removeRequestOp(op *requestOp) {
+	glog.Infoln("removeRequestOp ", len(h.respWait))
 	for _, id := range op.ids {
 		delete(h.respWait, string(id))
 	}
@@ -335,6 +336,7 @@ func (h *handler) cancelAllRequests(err error, inflightReq *requestOp) {
 		didClose[inflightReq] = true
 	}
 
+	glog.Infoln("cancelAllRequests ", len(h.respWait))
 	for id, op := range h.respWait {
 		// Remove the op so that later calls will not close op.resp again.
 		delete(h.respWait, id)
@@ -389,6 +391,7 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 func (h *handler) handleResponses(batch []*jsonrpcMessage, handleCall func(*jsonrpcMessage)) {
 	var resolvedops []*requestOp
 	handleResp := func(msg *jsonrpcMessage) {
+		glog.Infoln("respWait: ", h.respWait)
 		op := h.respWait[string(msg.ID)]
 		if op == nil {
 			glog.Errorln("Unsolicited RPC response", "reqid", idForLog{msg.ID})
@@ -459,7 +462,7 @@ func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMess
 		resp := h.handleCall(ctx, msg)
 		var ctx []interface{}
 		ctx = append(ctx, "reqid", idForLog{msg.ID}, "duration", time.Since(start))
-		if resp.Error != nil {
+		if resp.Error() != "" {
 			glog.Errorln("Served " + msg.Name + "err:" + resp.Error())
 		} else {
 			glog.Errorln("Served " + msg.Name)

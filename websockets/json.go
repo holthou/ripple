@@ -63,7 +63,7 @@ func (msg *jsonrpcMessage) isCall() bool {
 }
 
 func (msg *jsonrpcMessage) isResponse() bool {
-	return msg.hasValidID() && (msg.Result != nil || msg.Error != nil)
+	return msg.hasValidID() && (msg.Result != nil || msg.Error() != "")
 }
 
 func (msg *jsonrpcMessage) hasValidID() bool {

@@ -278,6 +278,7 @@ func (c *Client) RegisterName(name string, receiver interface{}) error {
 
 func (c *Client) nextID() json.RawMessage {
 	id := c.idCounter.Add(1)
+	fmt.Println("id ", id)
 	return strconv.AppendUint(nil, uint64(id), 10)
 }
 
@@ -335,7 +336,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, args inter
 	if result != nil && reflect.TypeOf(result).Kind() != reflect.Ptr {
 		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
 	}
-
+	//fmt.Println(args)
 	msg, err := c.newMessage(args)
 	if err != nil {
 		return err
@@ -345,7 +346,7 @@ func (c *Client) CallContext(ctx context.Context, result interface{}, args inter
 		ids:  []json.RawMessage{msg.ID},
 		resp: make(chan []*jsonrpcMessage, 1),
 	}
-
+	fmt.Println(string(msg.Command))
 	if c.isHTTP {
 		err = c.sendHTTP(ctx, op, msg.Command)
 	} else {
