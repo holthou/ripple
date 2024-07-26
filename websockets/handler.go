@@ -19,7 +19,6 @@ package websockets
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/golang/glog"
 	"reflect"
 	"strconv"
@@ -45,19 +44,21 @@ import (
 // Now send the request, then wait for the reply to be delivered through handleMsg:
 //
 //	if err := op.wait(...); err != nil {
-//	    h.removeRequestOp(op) // timeout, etc.
+//		h.removeRequestOp(op) // timeout, etc.
 //	}
 type handler struct {
-	reg            *serviceRegistry
-	unsubscribeCb  *callback
-	idgen          func() ID                      // subscription ID generator
-	respWait       map[string]*requestOp          // active client requests
-	clientSubs     map[string]*ClientSubscription // active client subscriptions
-	callWG         sync.WaitGroup                 // pending call goroutines
-	rootCtx        context.Context                // canceled by close()
-	cancelRoot     func()                         // cancel function for rootCtx
-	conn           jsonWriter                     // where responses will be sent
-	allowSubscribe bool
+	reg                  *serviceRegistry
+	unsubscribeCb        *callback
+	idgen                func() ID                      // subscription ID generator
+	respWait             map[string]*requestOp          // active client requests
+	clientSubs           map[string]*ClientSubscription // active client subscriptions
+	callWG               sync.WaitGroup                 // pending call goroutines
+	rootCtx              context.Context                // canceled by close()
+	cancelRoot           func()                         // cancel function for rootCtx
+	conn                 jsonWriter                     // where responses will be sent
+	allowSubscribe       bool
+	batchRequestLimit    int
+	batchResponseMaxSize int
 
 	subLock    sync.Mutex
 	serverSubs map[ID]*Subscription
@@ -68,21 +69,95 @@ type callProc struct {
 	notifiers []*Notifier
 }
 
-func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry) *handler {
+func newHandler(connCtx context.Context, conn jsonWriter, idgen func() ID, reg *serviceRegistry, batchRequestLimit, batchResponseMaxSize int) *handler {
 	rootCtx, cancelRoot := context.WithCancel(connCtx)
 	h := &handler{
-		reg:            reg,
-		idgen:          idgen,
-		conn:           conn,
-		respWait:       make(map[string]*requestOp),
-		clientSubs:     make(map[string]*ClientSubscription),
-		rootCtx:        rootCtx,
-		cancelRoot:     cancelRoot,
-		allowSubscribe: true,
-		serverSubs:     make(map[ID]*Subscription),
+		reg:                  reg,
+		idgen:                idgen,
+		conn:                 conn,
+		respWait:             make(map[string]*requestOp),
+		clientSubs:           make(map[string]*ClientSubscription),
+		rootCtx:              rootCtx,
+		cancelRoot:           cancelRoot,
+		allowSubscribe:       true,
+		serverSubs:           make(map[ID]*Subscription),
+		batchRequestLimit:    batchRequestLimit,
+		batchResponseMaxSize: batchResponseMaxSize,
+	}
+	if conn.remoteAddr() != "" {
+		glog.Infoln("conn", conn.remoteAddr())
 	}
 	h.unsubscribeCb = newCallback(reflect.Value{}, reflect.ValueOf(h.unsubscribe))
 	return h
+}
+
+// batchCallBuffer manages in progress call messages and their responses during a batch
+// call. Calls need to be synchronized between the processing and timeout-triggering
+// goroutines.
+type batchCallBuffer struct {
+	mutex sync.Mutex
+	calls []*jsonrpcMessage
+	resp  []*jsonrpcMessage
+	wrote bool
+}
+
+// nextCall returns the next unprocessed message.
+func (b *batchCallBuffer) nextCall() *jsonrpcMessage {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if len(b.calls) == 0 {
+		return nil
+	}
+	// The popping happens in `pushAnswer`. The in progress call is kept
+	// so we can return an error for it in case of timeout.
+	msg := b.calls[0]
+	return msg
+}
+
+// pushResponse adds the response to last call returned by nextCall.
+func (b *batchCallBuffer) pushResponse(answer *jsonrpcMessage) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	if answer != nil {
+		b.resp = append(b.resp, answer)
+	}
+	b.calls = b.calls[1:]
+}
+
+// write sends the responses.
+func (b *batchCallBuffer) write(ctx context.Context, conn jsonWriter) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	b.doWrite(ctx, conn, false)
+}
+
+// respondWithError sends the responses added so far. For the remaining unanswered call
+// messages, it responds with the given error.
+func (b *batchCallBuffer) respondWithError(ctx context.Context, conn jsonWriter, err error) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
+	for _, msg := range b.calls {
+		if !msg.isNotification() {
+			b.resp = append(b.resp, msg.errorResponse(err))
+		}
+	}
+	b.doWrite(ctx, conn, true)
+}
+
+// doWrite actually writes the response.
+// This assumes b.mutex is held.
+func (b *batchCallBuffer) doWrite(ctx context.Context, conn jsonWriter, isErrorResponse bool) {
+	if b.wrote {
+		return
+	}
+	b.wrote = true // can only write once
+	if len(b.resp) > 0 {
+		conn.writeJSON(ctx, b.resp, isErrorResponse)
+	}
 }
 
 // handleBatch executes all messages in a batch and returns the responses.
@@ -90,55 +165,143 @@ func (h *handler) handleBatch(msgs []*jsonrpcMessage) {
 	// Emit error response for empty batches:
 	if len(msgs) == 0 {
 		h.startCallProc(func(cp *callProc) {
-			h.conn.writeJSON(cp.ctx, errorMessage(&invalidRequestError{"empty batch"}))
+			resp := errorMessage(&invalidRequestError{"empty batch"})
+			h.conn.writeJSON(cp.ctx, resp, true)
+		})
+		return
+	}
+	// Apply limit on total number of requests.
+	if h.batchRequestLimit != 0 && len(msgs) > h.batchRequestLimit {
+		h.startCallProc(func(cp *callProc) {
+			h.respondWithBatchTooLarge(cp, msgs)
 		})
 		return
 	}
 
-	// Handle non-call messages first:
+	// Handle non-call messages first.
+	// Here we need to find the requestOp that sent the request batch.
 	calls := make([]*jsonrpcMessage, 0, len(msgs))
-	for _, msg := range msgs {
-		if handled := h.handleImmediate(msg); !handled {
-			calls = append(calls, msg)
-		}
-	}
+	h.handleResponses(msgs, func(msg *jsonrpcMessage) {
+		calls = append(calls, msg)
+	})
 	if len(calls) == 0 {
 		return
 	}
-	// Process calls on a goroutine because they may block indefinitely:
-	//h.startCallProc(func(cp *callProc) {
-	//	answers := make([]*jsonrpcMessage, 0, len(msgs))
-	//	for _, msg := range calls {
-	//		if answer := h.handleCallMsg(cp, msg); answer != nil {
-	//			answers = append(answers, answer)
-	//		}
-	//	}
-	//	h.addSubscriptions(cp.notifiers)
-	//	if len(answers) > 0 {
-	//		h.conn.writeJSON(cp.ctx, answers)
-	//	}
-	//	for _, n := range cp.notifiers {
-	//		n.activate()
-	//	}
-	//})
-}
 
-// handleMsg handles a single message.
-func (h *handler) handleMsg(msg *jsonrpcMessage) {
-	if ok := h.handleImmediate(msg); ok {
-		return
-	}
-	glog.Errorln("handleMsg -> startCallProc:", string(msg.Command))
+	// Process calls on a goroutine because they may block indefinitely:
 	h.startCallProc(func(cp *callProc) {
-		answer := h.handleCallMsg(cp, msg)
-		h.addSubscriptions(cp.notifiers)
-		if answer != nil {
-			h.conn.writeJSON(cp.ctx, answer)
+		var (
+			timer      *time.Timer
+			cancel     context.CancelFunc
+			callBuffer = &batchCallBuffer{calls: calls, resp: make([]*jsonrpcMessage, 0, len(calls))}
+		)
+
+		cp.ctx, cancel = context.WithCancel(cp.ctx)
+		defer cancel()
+
+		// Cancel the request context after timeout and send an error response. Since the
+		// currently-running method might not return immediately on timeout, we must wait
+		// for the timeout concurrently with processing the request.
+		if timeout, ok := ContextRequestTimeout(cp.ctx); ok {
+			timer = time.AfterFunc(timeout, func() {
+				cancel()
+				err := &internalServerError{errcodeTimeout, errMsgTimeout}
+				callBuffer.respondWithError(cp.ctx, h.conn, err)
+			})
 		}
+
+		responseBytes := 0
+		for {
+			// No need to handle rest of calls if timed out.
+			if cp.ctx.Err() != nil {
+				break
+			}
+			msg := callBuffer.nextCall()
+			if msg == nil {
+				break
+			}
+			resp := h.handleCallMsg(cp, msg)
+			callBuffer.pushResponse(resp)
+			if resp != nil && h.batchResponseMaxSize != 0 {
+				responseBytes += len(resp.Result)
+				if responseBytes > h.batchResponseMaxSize {
+					err := &internalServerError{errcodeResponseTooLarge, errMsgResponseTooLarge}
+					callBuffer.respondWithError(cp.ctx, h.conn, err)
+					break
+				}
+			}
+		}
+		if timer != nil {
+			timer.Stop()
+		}
+
+		h.addSubscriptions(cp.notifiers)
+		callBuffer.write(cp.ctx, h.conn)
 		//for _, n := range cp.notifiers {
 		//	n.activate()
 		//}
 	})
+}
+
+func (h *handler) respondWithBatchTooLarge(cp *callProc, batch []*jsonrpcMessage) {
+	resp := errorMessage(&invalidRequestError{errMsgBatchTooLarge})
+	// Find the first call and add its "id" field to the error.
+	// This is the best we can do, given that the protocol doesn't have a way
+	// of reporting an error for the entire batch.
+	for _, msg := range batch {
+		if msg.isCall() {
+			resp.ID = msg.ID
+			break
+		}
+	}
+	h.conn.writeJSON(cp.ctx, []*jsonrpcMessage{resp}, true)
+}
+
+// handleMsg handles a single non-batch message.
+func (h *handler) handleMsg(msg *jsonrpcMessage) {
+	msgs := []*jsonrpcMessage{msg}
+	h.handleResponses(msgs, func(msg *jsonrpcMessage) {
+		h.startCallProc(func(cp *callProc) {
+			h.handleNonBatchCall(cp, msg)
+		})
+	})
+}
+
+func (h *handler) handleNonBatchCall(cp *callProc, msg *jsonrpcMessage) {
+	var (
+		responded sync.Once
+		timer     *time.Timer
+		cancel    context.CancelFunc
+	)
+	cp.ctx, cancel = context.WithCancel(cp.ctx)
+	defer cancel()
+
+	// Cancel the request context after timeout and send an error response. Since the
+	// running method might not return immediately on timeout, we must wait for the
+	// timeout concurrently with processing the request.
+	if timeout, ok := ContextRequestTimeout(cp.ctx); ok {
+		timer = time.AfterFunc(timeout, func() {
+			cancel()
+			responded.Do(func() {
+				resp := msg.errorResponse(&internalServerError{errcodeTimeout, errMsgTimeout})
+				h.conn.writeJSON(cp.ctx, resp, true)
+			})
+		})
+	}
+
+	answer := h.handleCallMsg(cp, msg)
+	if timer != nil {
+		timer.Stop()
+	}
+	h.addSubscriptions(cp.notifiers)
+	if answer != nil {
+		responded.Do(func() {
+			h.conn.writeJSON(cp.ctx, answer, false)
+		})
+	}
+	//for _, n := range cp.notifiers {
+	//	n.activate()
+	//}
 }
 
 // close cancels all requests except for inflightReq and waits for
@@ -153,7 +316,6 @@ func (h *handler) close(err error, inflightReq *requestOp) {
 // addRequestOp registers a request operation.
 func (h *handler) addRequestOp(op *requestOp) {
 	for _, id := range op.ids {
-		//TODO 3 监听对应的请求ID
 		glog.Infoln("addRequestOp:", string(id))
 		h.respWait[string(id)] = op
 	}
@@ -223,65 +385,64 @@ func (h *handler) startCallProc(fn func(*callProc)) {
 	}()
 }
 
-// handleImmediate executes non-call messages. It returns false if the message is a
-// call or requires a reply.
-func (h *handler) handleImmediate(msg *jsonrpcMessage) bool {
-	start := time.Now()
-	switch {
-	case msg.isNotification():
-		// 这里不处理订阅，直接返回false，增加日志
-		//glog.Errorln()msg.
-		glog.Errorln("handleImmediate isNotification " + string(msg.Command))
-		//if strings.HasSuffix(msg.Method, notificationMethodSuffix) {
-		//	h.handleSubscriptionResult(msg)
-		//	return true
-		//}
-		return false
-	case msg.isResponse():
-		h.handleResponse(msg)
-		glog.Infoln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
-		return true
-	default:
-		return false
+// handleResponse processes method call responses.
+func (h *handler) handleResponses(batch []*jsonrpcMessage, handleCall func(*jsonrpcMessage)) {
+	var resolvedops []*requestOp
+	handleResp := func(msg *jsonrpcMessage) {
+		op := h.respWait[string(msg.ID)]
+		if op == nil {
+			glog.Errorln("Unsolicited RPC response", "reqid", idForLog{msg.ID})
+			return
+		}
+		resolvedops = append(resolvedops, op)
+		delete(h.respWait, string(msg.ID))
+
+		// For subscription responses, start the subscription if the server
+		// indicates success. EthSubscribe gets unblocked in either case through
+		// the op.resp channel.
+		if op.sub != nil {
+			if msg.Error() != "" {
+				op.err = msg.MsgError()
+			} else {
+				op.err = json.Unmarshal(msg.Result, &op.sub.subid)
+				if op.err == nil {
+					go op.sub.run()
+					h.clientSubs[op.sub.subid] = op.sub
+				}
+			}
+		}
+
+		if !op.hadResponse {
+			op.hadResponse = true
+			op.resp <- batch
+		}
+	}
+
+	for _, msg := range batch {
+		start := time.Now()
+		switch {
+		case msg.isResponse():
+			handleResp(msg)
+			glog.Errorln("Handled RPC response", "reqid", idForLog{msg.ID}, "duration", time.Since(start))
+		default:
+			handleCall(msg)
+		}
+	}
+
+	for _, op := range resolvedops {
+		h.removeRequestOp(op)
 	}
 }
 
 // handleSubscriptionResult processes subscription notifications.
-//func (h *handler) handleSubscriptionResult(msg *jsonrpcMessage) {
-//	var result subscriptionResult
-//	if err := json.Unmarshal(msg.Params, &result); err != nil {
-//		glog.Infoln("Dropping invalid subscription message")
-//		return
-//	}
-//	if h.clientSubs[result.ID] != nil {
-//		h.clientSubs[result.ID].deliver(result.Result)
-//	}
-//}
-
-// handleResponse processes method call responses.
-func (h *handler) handleResponse(msg *jsonrpcMessage) {
-	op := h.respWait[string(msg.ID)]
-	if op == nil {
-		glog.Infoln("Unsolicited RPC response", "reqid", idForLog{msg.ID})
+func (h *handler) handleSubscriptionResult(msg *jsonrpcMessage) {
+	var result subscriptionResult
+	if err := json.Unmarshal(msg.Result, &result); err != nil {
+		glog.Errorln("Dropping invalid subscription message")
 		return
 	}
-	delete(h.respWait, string(msg.ID))
-	// For normal responses, just forward the reply to Call/BatchCall.
-	if op.sub == nil {
-		op.resp <- msg
-		return
-	}
-	// For subscription responses, start the subscription if the server
-	// indicates success. EthSubscribe gets unblocked in either case through
-	// the op.resp channel.
-	defer close(op.resp)
-	if msg.Error() != "" {
-		op.err = fmt.Errorf(msg.Error())
-		return
-	}
-	if op.err = json.Unmarshal(msg.Result, &op.sub.subid); op.err == nil {
-		go op.sub.run()
-		h.clientSubs[op.sub.subid] = op.sub
+	if h.clientSubs[result.ID] != nil {
+		h.clientSubs[result.ID].deliver(result.Result)
 	}
 }
 
@@ -293,19 +454,21 @@ func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMess
 		h.handleCall(ctx, msg)
 		glog.Errorln("Served "+msg.Name, "duration", time.Since(start))
 		return nil
+
 	case msg.isCall():
 		resp := h.handleCall(ctx, msg)
 		var ctx []interface{}
 		ctx = append(ctx, "reqid", idForLog{msg.ID}, "duration", time.Since(start))
-		if resp.Error() != "" {
-			ctx = append(ctx, "err", resp.Error())
-			glog.Errorln("Served "+msg.Name, ctx)
+		if resp.Error != nil {
+			glog.Errorln("Served " + msg.Name + "err:" + resp.Error())
 		} else {
-			glog.Errorln("Served "+msg.Name, ctx)
+			glog.Errorln("Served " + msg.Name)
 		}
 		return resp
+
 	case msg.hasValidID():
 		return msg.errorResponse(&invalidRequestError{"invalid request"})
+
 	default:
 		return errorMessage(&invalidRequestError{"invalid request"})
 	}
@@ -313,24 +476,35 @@ func (h *handler) handleCallMsg(ctx *callProc, msg *jsonrpcMessage) *jsonrpcMess
 
 // handleCall processes method calls.
 func (h *handler) handleCall(cp *callProc, msg *jsonrpcMessage) *jsonrpcMessage {
-	//if msg.isSubscribe() {
-	//	return h.handleSubscribe(cp, msg)
-	//}
+
 	var callb *callback
-	//if msg.isUnsubscribe() {
-	//	callb = h.unsubscribeCb
-	//} else {
-	//callb = h.reg.callback(msg.Method)
+
 	callb = h.reg.callback(msg.Name)
-	//}
+
 	if callb == nil {
 		return msg.errorResponse(&methodNotFoundError{method: msg.Name})
 	}
-	args, err := parsePositionalArguments(msg.Command, callb.argTypes)
+
+	args, err := parsePositionalArguments(msg.Result, callb.argTypes)
 	if err != nil {
 		return msg.errorResponse(&invalidParamsError{err.Error()})
 	}
+	//start := time.Now()
 	answer := h.runMethod(cp.ctx, msg, callb, args)
+
+	// Collect the statistics for RPC calls if metrics is enabled.
+	// We only care about pure rpc call. Filter out subscription.
+	//if callb != h.unsubscribeCb {
+	//	rpcRequestGauge.Inc(1)
+	//	if answer.Error != nil {
+	//		failedRequestGauge.Inc(1)
+	//	} else {
+	//		successfulRequestGauge.Inc(1)
+	//	}
+	//	rpcServingTimer.UpdateSince(start)
+	//	updateServeTimeHistogram(msg.Method, answer.Error == nil, time.Since(start))
+	//}
+
 	return answer
 }
 
@@ -341,7 +515,7 @@ func (h *handler) handleCall(cp *callProc, msg *jsonrpcMessage) *jsonrpcMessage 
 //	}
 //
 //	// Subscription method name is first argument.
-//	name, err := parseSubscriptionName(msg.Params)
+//	name, err := parseSubscriptionName(msg)
 //	if err != nil {
 //		return msg.errorResponse(&invalidParamsError{err.Error()})
 //	}

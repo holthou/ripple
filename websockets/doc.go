@@ -15,7 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 /*
-Package rpc implements bi-directional JSON-RPC 2.0 on multiple transports.
+package websockets implements bi-directional JSON-RPC 2.0 on multiple transports.
 
 It provides access to the exported methods of an object across a network or other I/O
 connection. After creating a server or client instance, objects can be registered to make

@@ -23,9 +23,9 @@ import (
 // API describes the set of methods offered over the RPC interface
 type API struct {
 	Namespace     string      // namespace under which the rpc methods of Service are exposed
-	Version       string      // api version for DApp's
+	Version       string      // deprecated - this field is no longer used, but retained for compatibility
 	Service       interface{} // receiver instance which holds the methods
-	Public        bool        // indication if the methods must be considered safe for public use
+	Public        bool        // deprecated - this field is no longer used, but retained for compatibility
 	Authenticated bool        // whether the api should only be available behind authentication.
 }
 
@@ -43,9 +43,21 @@ type ServerCodec interface {
 // jsonWriter can write JSON messages to its underlying connection.
 // Implementations must be safe for concurrent use.
 type jsonWriter interface {
-	writeJSON(context.Context, interface{}) error
+	// writeJSON writes a message to the connection.
+	writeJSON(ctx context.Context, msg interface{}, isError bool) error
+
 	// Closed returns a channel which is closed when the connection is closed.
 	closed() <-chan interface{}
 	// RemoteAddr returns the peer address of the connection.
 	remoteAddr() string
 }
+
+type BlockNumber int64
+
+const (
+	SafeBlockNumber      = BlockNumber(-4)
+	FinalizedBlockNumber = BlockNumber(-3)
+	LatestBlockNumber    = BlockNumber(-2)
+	PendingBlockNumber   = BlockNumber(-1)
+	EarliestBlockNumber  = BlockNumber(0)
+)
