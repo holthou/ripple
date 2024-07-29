@@ -2,6 +2,7 @@
 package config
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -81,7 +82,7 @@ func (s ActionSlice) Prepare() error {
 }
 
 func (s ActionSlice) Submit(host string) error {
-	remote, err := websockets.NewRemote(host)
+	remote, err := websockets.Dial(host)
 	if err != nil {
 		return err
 	}
@@ -90,7 +91,7 @@ func (s ActionSlice) Submit(host string) error {
 		if err != nil {
 			return err
 		}
-		result, err := remote.Submit(raw)
+		result, err := remote.Submit(context.TODO(), raw)
 		if err != nil {
 			return err
 		}

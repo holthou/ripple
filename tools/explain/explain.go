@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/rubblelabs/ripple/data"
@@ -39,8 +40,9 @@ Options:`
 var argumentRegex = regexp.MustCompile(`(^[0-9a-fA-F]{64}$)|(^\d+$)|(^[r][a-km-zA-HJ-NP-Z0-9]{26,34}$)|(-)`)
 
 var (
-	flags        = flag.CommandLine
-	host         = flags.String("host", "wss://s2.ripple.com:443", "websockets host")
+	flags = flag.CommandLine
+	host  = flags.String("host", "wss://s2.ripple.com:443", "websockets host")
+	//host         = flags.String("host", "wss://chainrpc-ripple-ws.byqian.org:443", "websockets host")
 	trades       = flag.Bool("t", false, "hide trades")
 	balances     = flag.Bool("b", false, "hide balances")
 	paths        = flag.Bool("p", false, "hide paths")
@@ -98,51 +100,59 @@ func main() {
 	r, err := websockets.Dial(*host)
 	checkErr(err)
 	glog.Infoln("Connected to: ", *host)
-	switch {
-	case len(matches) == 0:
-		showUsage()
-	case len(matches[1]) > 0:
-		hash, err := data.NewHash256(matches[1])
-		checkErr(err)
-		fmt.Println("Getting transaction: ", hash.String())
-		result, err := r.Tx(context.TODO(), *hash)
-		checkErr(err)
-		explain(&result.TransactionWithMetaData, terminal.Default)
-	case len(matches[2]) > 0:
-		seq, err := strconv.ParseUint(matches[2], 10, 32)
-		checkErr(err)
-		ledger, err := r.Ledger(context.TODO(), seq, true)
-		checkErr(err)
-		fmt.Println("Getting transactions for: ", seq)
-		for _, txm := range ledger.Ledger.Transactions {
-			explain(txm, terminal.Default)
-		}
-	case len(matches[3]) > 0:
-		account, err := data.NewAccountFromAddress(matches[3])
-		checkErr(err)
-
-		fmt.Println("Getting account for: ", account.String())
-		accInfo, err := r.AccountInfo(context.TODO(), *account, "closed")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		fmt.Printf("%+v \n", *accInfo)
-
-		fmt.Println("Getting transactions for: ", account.String())
-		for txm := range r.AccountTx(context.TODO(), *account, *pageSize, -1, -1) {
-			explain(txm.Data, terminal.ShowLedgerSequence)
-		}
-	case len(matches[4]) > 0:
-		r := bufio.NewReader(os.Stdin)
-		for line, err := r.ReadString('\n'); err == nil; line, err = r.ReadString('\n') {
-			// TODO: Accept nodeid:nodedata format
-			b, err := hex.DecodeString(line[:len(line)-1])
+	for true {
+		switch {
+		case len(matches) == 0:
+			showUsage()
+		case len(matches[1]) > 0:
+			hash, err := data.NewHash256(matches[1])
 			checkErr(err)
-			var nodeid data.Hash256
-			v, err := data.ReadPrefix(bytes.NewReader(b), nodeid)
+			fmt.Println("Getting transaction: ", hash.String())
+			result, err := r.Tx(context.TODO(), *hash)
+			if err != nil {
+				terminal.Println(err.Error(), terminal.Default)
+			} else {
+				explain(&result.TransactionWithMetaData, terminal.Default)
+			}
+		case len(matches[2]) > 0:
+			seq, err := strconv.ParseUint(matches[2], 10, 32)
 			checkErr(err)
-			terminal.Println(v, terminal.Default)
+			ledger, err := r.Ledger(context.TODO(), seq, true)
+			checkErr(err)
+			fmt.Println("Getting transactions for: ", seq)
+			for _, txm := range ledger.Ledger.Transactions {
+				explain(txm, terminal.Default)
+			}
+		case len(matches[3]) > 0:
+			account, err := data.NewAccountFromAddress(matches[3])
+			checkErr(err)
+
+			fmt.Println("Getting account for: ", account.String())
+			accInfo, err := r.AccountInfo(context.TODO(), *account, "closed")
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			fmt.Printf("%+v \n", *accInfo)
+
+			fmt.Println("Getting transactions for: ", account.String())
+			for txm := range r.AccountTx(context.TODO(), *account, *pageSize, -1, -1) {
+				explain(txm.Data, terminal.ShowLedgerSequence)
+			}
+		case len(matches[4]) > 0:
+			r := bufio.NewReader(os.Stdin)
+			for line, err := r.ReadString('\n'); err == nil; line, err = r.ReadString('\n') {
+				// TODO: Accept nodeid:nodedata format
+				b, err := hex.DecodeString(line[:len(line)-1])
+				checkErr(err)
+				var nodeid data.Hash256
+				v, err := data.ReadPrefix(bytes.NewReader(b), nodeid)
+				checkErr(err)
+				terminal.Println(v, terminal.Default)
+			}
 		}
+
+		time.Sleep(5 * time.Second)
 	}
+
 }

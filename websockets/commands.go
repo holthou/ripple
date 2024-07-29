@@ -3,16 +3,11 @@ package websockets
 import (
 	"encoding/json"
 	"fmt"
-	"sync/atomic"
-
 	"github.com/rubblelabs/ripple/data"
 )
 
-var counter uint64
-
-type Syncer interface {
-	Done()
-	Fail(message string)
+type SyncerCmd interface {
+	SetId(id uint64)
 }
 
 type CommandError struct {
@@ -36,17 +31,14 @@ func (err *CommandError) ErrorData() interface{} {
 	return err.Message
 }
 
+var _ SyncerCmd = (*Command)(nil)
+
 type Command struct {
 	*CommandError
-	Id     uint64        `json:"id"`
-	Name   string        `json:"command"`
-	Type   string        `json:"type,omitempty"`
-	Status string        `json:"status,omitempty"`
-	Ready  chan struct{} `json:"-"`
-}
-
-func (c *Command) Done() {
-	c.Ready <- struct{}{}
+	Id     uint64 `json:"id"`
+	Name   string `json:"command"`
+	Type   string `json:"type,omitempty"`
+	Status string `json:"status,omitempty"`
 }
 
 func (c *Command) Fail(message string) {
@@ -55,18 +47,15 @@ func (c *Command) Fail(message string) {
 		Code:    -1,
 		Message: message,
 	}
-	c.Ready <- struct{}{}
 }
 
-func (c *Command) IncrementId() {
-	c.Id = atomic.AddUint64(&counter, 1)
+func (c *Command) SetId(id uint64) {
+	c.Id = id
 }
 
 func newCommand(command string) *Command {
 	return &Command{
-		Id:    atomic.AddUint64(&counter, 1),
-		Name:  command,
-		Ready: make(chan struct{}),
+		Name: command,
 	}
 }
 

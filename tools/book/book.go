@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -42,14 +43,14 @@ func main() {
 	}
 	flag.CommandLine.Parse(os.Args[3:])
 
-	remote, err := websockets.NewRemote(*host)
+	remote, err := websockets.Dial(*host)
 	checkErr(err)
 	gets, err := data.NewAsset(os.Args[1])
 	checkErr(err)
 	pays, err := data.NewAsset(os.Args[2])
 	checkErr(err)
 	var zeroAccount data.Account
-	result, err := remote.BookOffers(zeroAccount, "closed", *pays, *gets)
+	result, err := remote.BookOffers(context.TODO(), zeroAccount, "closed", *pays, *gets)
 	checkErr(err)
 	// fmt.Println(*result.LedgerSequence) //TODO: wait for nikb fix
 	for _, offer := range result.Offers {

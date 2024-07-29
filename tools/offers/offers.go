@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -42,11 +43,11 @@ func main() {
 	}
 	flag.CommandLine.Parse(os.Args[2:])
 
-	remote, err := websockets.NewRemote(*host)
+	remote, err := websockets.Dial(*host)
 	checkErr(err)
 	account, err := data.NewAccountFromAddress(os.Args[1])
 	checkErr(err)
-	result, err := remote.AccountOffers(*account, "closed")
+	result, err := remote.AccountOffers(context.TODO(), *account, "closed")
 	checkErr(err)
 	fmt.Println(*result.LedgerSequence)
 	for _, offer := range result.Offers {
