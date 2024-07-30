@@ -564,7 +564,7 @@ func (c *Client) newMessage(paramsIn interface{}) (*jsonrpcMessage, error) {
 			return nil, err
 		}
 	}
-	glog.Infoln(string(msg.Command))
+	//glog.Infoln(string(msg.Command))
 	return msg, nil
 }
 
