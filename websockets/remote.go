@@ -250,7 +250,7 @@ func (c *Client) accountTx(ctx context.Context, account data.Account, ch chan Tr
 	cmd := newAccountTxCommand(account, pageSize, nil, minLedger, maxLedger)
 	for ; ; cmd = newAccountTxCommand(account, pageSize, cmd.Result.Marker, minLedger, maxLedger) {
 		if err := c.CallContext(ctx, &cmd.Result, cmd); err != nil {
-			ch <- TransactionStream{Error: fmt.Errorf("accountTx:%s", err)}
+			ch <- TransactionStream{Error: fmt.Errorf("accountTx:%w", err)}
 			return
 		}
 		for _, tx := range cmd.Result.Transactions {
