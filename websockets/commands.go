@@ -318,11 +318,11 @@ type ServerInfoResult struct {
 			ConvergeTimeS float64 `json:"converge_time_s"`
 			Proposers     int     `json:"proposers"`
 		} `json:"last_close"`
-		LoadFactor      float64 `json:"load_factor"`
-		NetworkId       int     `json:"network_id"`
-		PubkeyNode      string  `json:"pubkey_node"`
-		PublishedLedger string  `json:"published_ledger"`
-		Reporting       struct {
+		LoadFactor float64 `json:"load_factor"`
+		NetworkId  int     `json:"network_id"`
+		PubkeyNode string  `json:"pubkey_node"`
+		//PublishedLedger string  `json:"published_ledger"`
+		Reporting struct {
 			EtlSources []struct {
 				Connected              bool   `json:"connected"`
 				GrpcPort               string `json:"grpc_port"`
