@@ -136,7 +136,7 @@ func main() {
 			fmt.Printf("%+v \n", *accInfo)
 
 			fmt.Println("Getting transactions for: ", account.String())
-			for txm := range r.AccountTx(context.TODO(), *account, *pageSize, -1, -1) {
+			for txm := range r.AccountTx(context.TODO(), *account, *pageSize, false, -1, -1) {
 				explain(txm.Data, terminal.ShowLedgerSequence)
 			}
 		case len(matches[4]) > 0:
