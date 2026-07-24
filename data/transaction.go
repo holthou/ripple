@@ -1,5 +1,7 @@
 package data
 
+import "encoding/json"
+
 type TxBase struct {
 	TransactionType    TransactionType
 	Flags              *TransactionFlag `json:",omitempty"`
@@ -267,6 +269,138 @@ type InvokeTransaction struct {
 	Destination Account
 	Blob        *VariableLength `json:",omitempty"`
 	InvoiceID   *Hash256        `json:",omitempty"`
+}
+
+// NicknameSet is deprecated (type 6).
+type NicknameSet struct {
+	TxBase
+}
+
+// Contract is deprecated (type 9).
+type Contract struct {
+	TxBase
+}
+
+// SpinalTap is deprecated (type 11).
+type SpinalTap struct {
+	TxBase
+}
+
+// Issue represents a currency+issuer pair (no amount value), used for ISSUE-typed fields.
+type Issue struct {
+	Currency Currency `json:"currency"`
+	Issuer   *Account `json:"issuer,omitempty"`
+}
+
+// SetHook supporting types.
+
+type HookParam struct {
+	HookParameterName  *VariableLength `json:",omitempty"`
+	HookParameterValue *VariableLength `json:",omitempty"`
+}
+
+type HookParamInfo struct {
+	HookParameter HookParam `json:",omitempty"`
+}
+
+type HookGrant struct {
+	HookHash  *Hash256 `json:",omitempty"`
+	Authorize *Account `json:",omitempty"`
+}
+
+type HookGrantInfo struct {
+	HookGrant HookGrant `json:",omitempty"`
+}
+
+type HookEntry struct {
+	CreateCode     *VariableLength `json:",omitempty"`
+	HookHash       *Hash256        `json:",omitempty"`
+	HookOn         *Hash256        `json:",omitempty"` // UINT256 bitmask
+	HookApiVersion *uint16         `json:",omitempty"`
+	HookNamespace  *Hash256        `json:",omitempty"`
+	HookParameters []HookParamInfo `json:",omitempty"`
+	HookGrants     []HookGrantInfo `json:",omitempty"`
+	Flags          *uint32         `json:",omitempty"`
+}
+
+type HookEntryInfo struct {
+	Hook HookEntry `json:",omitempty"`
+}
+
+type SetHook struct {
+	TxBase
+	Hooks []HookEntryInfo `json:",omitempty"`
+}
+
+// URIToken transactions.
+
+type URITokenMint struct {
+	TxBase
+	URI         *VariableLength `json:",omitempty"`
+	Digest      *Hash256        `json:",omitempty"`
+	Amount      *Amount         `json:",omitempty"`
+	Destination *Account        `json:",omitempty"`
+}
+
+type URITokenBurn struct {
+	TxBase
+	URITokenID Hash256
+}
+
+type URITokenBuy struct {
+	TxBase
+	URITokenID Hash256
+	Amount     Amount
+}
+
+type URITokenCreateSellOffer struct {
+	TxBase
+	URITokenID  Hash256
+	Amount      Amount
+	Destination *Account `json:",omitempty"`
+}
+
+type URITokenCancelSellOffer struct {
+	TxBase
+	URITokenID Hash256
+}
+
+// GenesisMint transaction supporting types.
+
+type GenesisMintEntry struct {
+	Destination Account
+	Amount      Amount
+}
+
+type GenesisMintInfo struct {
+	GenesisMint GenesisMintEntry `json:",omitempty"`
+}
+
+type GenesisMintTx struct {
+	TxBase
+	GenesisMints []GenesisMintInfo `json:",omitempty"`
+}
+
+// ClaimReward resets accumulators and claims a reward from a hook.
+type ClaimReward struct {
+	TxBase
+	Issuer        *Account `json:",omitempty"`
+	ClaimCurrency *Issue   `json:",omitempty"`
+}
+
+// EmitFailure is a pseudo-transaction recording a hook emit failure.
+type EmitFailure struct {
+	TxBase
+	LedgerSequence  uint32
+	TransactionHash Hash256
+}
+
+// UNLReport is a pseudo-transaction updating the negative UNL report.
+type UNLReport struct {
+	TxBase
+	LedgerSequence  uint32
+	ActiveValidator json.RawMessage `json:",omitempty"`
+	ImportVLKey     json.RawMessage `json:",omitempty"`
 }
 
 func (t *TxBase) GetBase() *TxBase                    { return t }

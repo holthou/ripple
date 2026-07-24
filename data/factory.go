@@ -139,6 +139,24 @@ var TxFactory = [...]func() Transaction{
 	NFTOKEN_ACCEPT_OFFER: func() Transaction { return &NFTAcceptOffer{TxBase: TxBase{TransactionType: NFTOKEN_ACCEPT_OFFER}} },
 	IMPORT:               func() Transaction { return &ImportTransaction{TxBase: TxBase{TransactionType: IMPORT}} },
 	INVOKE:               func() Transaction { return &InvokeTransaction{TxBase: TxBase{TransactionType: INVOKE}} },
+
+	NICK_NAME_SET:  func() Transaction { return &NicknameSet{TxBase: TxBase{TransactionType: NICK_NAME_SET}} },
+	CONTRACTTX:     func() Transaction { return &Contract{TxBase: TxBase{TransactionType: CONTRACTTX}} },
+	SPINAL_TAP:     func() Transaction { return &SpinalTap{TxBase: TxBase{TransactionType: SPINAL_TAP}} },
+	SET_HOOK:       func() Transaction { return &SetHook{TxBase: TxBase{TransactionType: SET_HOOK}} },
+	URI_TOKEN_MINT: func() Transaction { return &URITokenMint{TxBase: TxBase{TransactionType: URI_TOKEN_MINT}} },
+	URI_TOKEN_BURN: func() Transaction { return &URITokenBurn{TxBase: TxBase{TransactionType: URI_TOKEN_BURN}} },
+	URI_TOKEN_BUY:  func() Transaction { return &URITokenBuy{TxBase: TxBase{TransactionType: URI_TOKEN_BUY}} },
+	URI_TOKEN_CREATE_SELL_OFFER: func() Transaction {
+		return &URITokenCreateSellOffer{TxBase: TxBase{TransactionType: URI_TOKEN_CREATE_SELL_OFFER}}
+	},
+	URI_TOKEN_CANCEL_SELL_OFFER: func() Transaction {
+		return &URITokenCancelSellOffer{TxBase: TxBase{TransactionType: URI_TOKEN_CANCEL_SELL_OFFER}}
+	},
+	GENESIS_MINT: func() Transaction { return &GenesisMintTx{TxBase: TxBase{TransactionType: GENESIS_MINT}} },
+	CLAIM_REWARD: func() Transaction { return &ClaimReward{TxBase: TxBase{TransactionType: CLAIM_REWARD}} },
+	EMIT_FAILURE: func() Transaction { return &EmitFailure{TxBase: TxBase{TransactionType: EMIT_FAILURE}} },
+	UNL_REPORT:   func() Transaction { return &UNLReport{TxBase: TxBase{TransactionType: UNL_REPORT}} },
 }
 
 var ledgerEntryNames = [...]string{
@@ -318,7 +336,10 @@ func (le LedgerEntryType) String() string {
 }
 
 func GetTxFactoryByType(txType string) func() Transaction {
-	return TxFactory[txTypes[txType]]
+	if f := TxFactory[txTypes[txType]]; f != nil {
+		return f
+	}
+	return func() Transaction { return &TxBase{} }
 }
 
 func GetLedgerEntryFactoryByType(leType string) func() LedgerEntry {

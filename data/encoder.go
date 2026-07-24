@@ -201,7 +201,9 @@ func getFields(v *reflect.Value, depth int) fieldSlice {
 			children.Append(reverseEncodings["EndOfObject"], nil, nil)
 			fields.Append(encoding, nil, children)
 		default:
-			fields = append(fields, getFields(&f, depth+1)...)
+			if f.Kind() == reflect.Struct {
+				fields = append(fields, getFields(&f, depth+1)...)
+			}
 		}
 	}
 	fields.Sort()
