@@ -234,22 +234,21 @@ type TransactionStream struct {
 //	}
 //}
 
-func newAccountTxCommand(account data.Account, pageSize int, forward bool, marker map[string]interface{}, minLedger, maxLedger int64) *AccountTxCommand {
+func newAccountTxCommand(account data.Account, pageSize int, marker map[string]interface{}, minLedger, maxLedger int64) *AccountTxCommand {
 	return &AccountTxCommand{
 		Command:   newCommand("account_tx"),
 		Account:   account,
 		MinLedger: minLedger,
 		MaxLedger: maxLedger,
-		Forward:   forward,
 		Limit:     pageSize,
 		Marker:    marker,
 	}
 }
 
-func (c *Client) accountTx(ctx context.Context, account data.Account, ch chan TransactionStream, pageSize int, forward bool, minLedger, maxLedger int64) {
+func (c *Client) accountTx(ctx context.Context, account data.Account, ch chan TransactionStream, pageSize int, minLedger, maxLedger int64) {
 	defer close(ch)
-	cmd := newAccountTxCommand(account, pageSize, forward, nil, minLedger, maxLedger)
-	for ; ; cmd = newAccountTxCommand(account, pageSize, forward, cmd.Result.Marker, minLedger, maxLedger) {
+	cmd := newAccountTxCommand(account, pageSize, nil, minLedger, maxLedger)
+	for ; ; cmd = newAccountTxCommand(account, pageSize, cmd.Result.Marker, minLedger, maxLedger) {
 		if err := c.CallContext(ctx, &cmd.Result, cmd); err != nil {
 			ch <- TransactionStream{Error: fmt.Errorf("accountTx:%w", err)}
 			return
@@ -277,9 +276,9 @@ func (c *Client) accountTx(ctx context.Context, account data.Account, ch chan Tr
 //		go r.accountTx(account, c, pageSize, minLedger, maxLedger)
 //		return c
 //	}
-func (c *Client) AccountTx(ctx context.Context, account data.Account, pageSize int, forward bool, minLedger, maxLedger int64) chan TransactionStream {
+func (c *Client) AccountTx(ctx context.Context, account data.Account, pageSize int, minLedger, maxLedger int64) chan TransactionStream {
 	ch := make(chan TransactionStream)
-	go c.accountTx(ctx, account, ch, pageSize, forward, minLedger, maxLedger)
+	go c.accountTx(ctx, account, ch, pageSize, minLedger, maxLedger)
 	return ch
 }
 
