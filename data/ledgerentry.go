@@ -33,6 +33,8 @@ type AccountRoot struct {
 	MintedNFTokens *uint32          `json:",omitempty"`
 	BurnedNFTokens *uint32          `json:",omitempty"`
 	ImportSequence *uint32          `json:",omitempty"` //XAH mint出burn交易的seq
+	HookNamespaces []string         `json:",omitempty"` //以下两个参数 xah hook相关
+	HookStateCount *uint32          `json:",omitempty"`
 }
 
 type RippleState struct {
